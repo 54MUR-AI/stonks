@@ -1,14 +1,24 @@
 # Stonks - Advanced Financial Market Analysis Platform
 
+<p align="center">
+  <img src="logo.png" alt="STONKS" width="400"/>
+</p>
+
 A comprehensive web application for real-time market analysis, portfolio management, and AI-powered investment insights.
 
 ## Key Features
 
 ### Market Analysis
 - Real-time market data visualization for stocks, crypto, and other securities
-- Interactive charts with advanced technical indicators
-- Multi-timeframe analysis
+- Interactive charts with advanced technical indicators:
+  - Simple Moving Average (SMA)
+  - Exponential Moving Average (EMA)
+  - Bollinger Bands (BB)
+  - Relative Strength Index (RSI)
+  - MACD (Moving Average Convergence Divergence)
+- Multi-timeframe analysis (1D, 1W, 1M, 3M, 6M, 1Y, ALL)
 - AI-powered market insights and predictions
+- Benchmark comparisons with major indices (SPY, QQQ, DIA, IWM)
 
 ### Portfolio Management
 - Portfolio tracking and performance metrics
@@ -16,7 +26,10 @@ A comprehensive web application for real-time market analysis, portfolio managem
 - Automated portfolio rebalancing
 - Risk analysis and correlation matrices
 - Maximum drawdown analysis
-- Benchmark comparisons
+- Real-time portfolio value updates via WebSocket
+- Position-level volatility tracking
+- Customizable technical indicator overlays
+- Benchmark performance comparison
 
 ### Social Features
 - Portfolio sharing with granular permissions
@@ -111,6 +124,29 @@ cd frontend
 npm start
 ```
 
+## Environment Configuration
+
+The application uses environment variables for configuration. To get started:
+
+1. Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Update the `.env` file with your configuration:
+   - `STONKS_HOST`: Server host (default: 127.0.0.1)
+   - `STONKS_PORT`: Server port (default: 8000)
+   - `STONKS_ENV`: Environment (development/production)
+   - `SECRET_KEY`: JWT secret key (change this in production!)
+   - `DATABASE_URL`: Database connection string
+   - API keys for external services
+
+3. Security Notes:
+   - Never commit `.env` file to version control
+   - In production, use a secure secret key
+   - When deploying, ensure proper network security is configured
+   - Default configuration binds to localhost for security
+
 ## Project Structure
 
 ```
@@ -134,6 +170,26 @@ stonks/
 ## API Documentation
 
 The API documentation is available at `/docs` or `/redoc` when running the backend server.
+
+## API Endpoints
+
+### Portfolio Metrics
+```
+GET /api/portfolios/{portfolio_id}/metrics
+
+Query Parameters:
+- time_range: Time period for analysis (1D|1W|1M|3M|6M|1Y|ALL)
+- indicators: Technical indicators to include (SMA|EMA|BB|RSI|MACD)
+- benchmark: Benchmark index for comparison (SPY|QQQ|DIA|IWM)
+
+Response includes:
+- Current portfolio value and changes
+- Historical value data
+- Risk metrics (volatility, Sharpe ratio)
+- Position-level metrics
+- Technical indicators
+- Benchmark comparison data
+```
 
 ## Testing
 
@@ -175,3 +231,30 @@ npm test
 - TradingView for the Lightweight Charts library
 - FastAPI for the excellent framework
 - Material-UI for the component library
+
+## Next Steps
+
+### Frontend Development
+- Implement portfolio visualization dashboard
+- Add interactive charts for portfolio analysis
+- Create user profile pages
+
+### Backend Enhancements
+- Add real-time market data streaming
+- Implement portfolio rebalancing suggestions
+- Add machine learning-based market insights
+
+### Performance Optimization
+- Implement caching for market data
+- Optimize database queries
+- Add background task processing
+
+### Security Enhancements
+- Add 2FA support
+- Implement rate limiting
+- Enhanced input validation
+
+### Documentation
+- Complete API documentation
+- Add user guides
+- Create developer documentation

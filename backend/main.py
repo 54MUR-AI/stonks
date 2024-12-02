@@ -1,24 +1,98 @@
-from fastapi import FastAPI, WebSocket, HTTPException, Request, Depends, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import FastAPI, HTTPException, Depends, status, Request, WebSocket
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 import yfinance as yf
-import httpx
-import json
+import pandas as pd
+import numpy as np
 import logging
 from datetime import datetime, timedelta
-import asyncio
-from typing import Optional
-from pydantic import BaseModel, validator
-import re
-from sqlalchemy.orm import Session
-from database import engine, get_db
-from models import Base, ActivityType, NotificationType
-from schemas import UserCreate, User, Token, PortfolioCreate, Portfolio, PositionCreate, Position, TradeCreate, Trade, WatchlistCreate, Watchlist, AlertCreate, Alert
-from auth import get_password_hash, verify_password, create_access_token, get_current_active_user, get_current_user
+import os
+from dotenv import load_dotenv
+from pydantic import BaseModel, constr, confloat, validator
+from typing import List, Dict, Optional
+
+from database import SessionLocal, engine, Base
+from models import (
+    Base, ActivityType, NotificationType, User, Portfolio, Position,
+    Trade, Watchlist, Alert, PortfolioShare, UserFollow, Comment
+)
+from schemas import (
+    UserCreate, UserResponse, Token, PortfolioCreate, PortfolioResponse,
+    PositionCreate, PositionResponse, TradeCreate, TradeResponse,
+    WatchlistCreate, WatchlistResponse, AlertCreate, AlertResponse,
+    CommentCreate, CommentResponse, MarketDataRequest, TargetWeights
+)
+from auth_service import AuthService, get_current_active_user
+from activity_service import ActivityService, NotificationService
 from analytics import calculate_portfolio_metrics, calculate_correlation_matrix
 from email_service import send_alert_email, send_portfolio_summary, check_price_alerts
-from portfolio_rebalancer import PortfolioRebalancer, optimize_portfolio_weights
-from activity_service import ActivityService, NotificationService
+from .routers import auth, users, portfolios, portfolio_metrics, websocket
+
+# Load environment variables
+load_dotenv()
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="Stonks API",
+    description="Financial Market Analysis Platform API",
+    version="1.0.0"
+)
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Dependency to get database session
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Initialize services
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+@app.post("/token", response_model=Token)
+async def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    auth_service = AuthService(db)
+    user = auth_service.authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "30")))
+    access_token = auth_service.create_access_token(
+        data={"sub": str(user.id)},
+        expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.post("/users/", response_model=UserResponse)
+async def register(user_create: UserCreate, db: Session = Depends(get_db)):
+    auth_service = AuthService(db)
+    try:
+        user = auth_service.create_user(
+            email=user_create.email,
+            password=user_create.password,
+            username=user_create.username,
+            full_name=user_create.full_name
+        )
+        return user
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error creating user: {str(e)}")
+        raise HTTPException(status_code=500, detail="Could not create user")
 
 # Configure logging
 logging.basicConfig(
@@ -30,9 +104,6 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
-
-# Create database tables
-Base.metadata.create_all(bind=engine)
 
 # Custom exceptions
 class MarketDataError(Exception):
@@ -66,8 +137,6 @@ class TargetWeights(BaseModel):
     weights: dict[str, float]
     tolerance: float = 0.05
 
-app = FastAPI(title="Stonks API")
-
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
@@ -76,6 +145,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include routers
+app.include_router(auth.router, prefix="/api", tags=["auth"])
+app.include_router(users.router, prefix="/api", tags=["users"])
+app.include_router(portfolios.router, prefix="/api", tags=["portfolios"])
+app.include_router(portfolio_metrics.router, prefix="/api", tags=["portfolio-metrics"])
+app.include_router(websocket.router, prefix="/api", tags=["websocket"])
 
 # Request logging middleware
 @app.middleware("http")
@@ -301,18 +377,18 @@ async def get_ai_analysis(symbol: str):
         logger.error(f"Unexpected error in get_ai_analysis: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@app.post("/register", response_model=User)
+@app.post("/register", response_model=UserResponse)
 async def register(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(models.User).filter(models.User.email == user.email).first()
+    db_user = db.query(User).filter(User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    db_user = db.query(models.User).filter(models.User.username == user.username).first()
+    db_user = db.query(User).filter(User.username == user.username).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Username already taken")
     
     hashed_password = get_password_hash(user.password)
-    db_user = models.User(
+    db_user = User(
         email=user.email,
         username=user.username,
         hashed_password=hashed_password
@@ -327,7 +403,7 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    user = db.query(models.User).filter(models.User.username == form_data.username).first()
+    user = db.query(User).filter(User.username == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -341,142 +417,135 @@ async def login(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.post("/portfolios/", response_model=Portfolio)
+@app.post("/portfolios/", response_model=PortfolioResponse)
 async def create_portfolio(
     portfolio: PortfolioCreate,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    db_portfolio = models.Portfolio(**portfolio.dict(), owner_id=current_user.id)
+    db_portfolio = Portfolio(**portfolio.dict(), owner_id=current_user.id)
     db.add(db_portfolio)
     db.commit()
     db.refresh(db_portfolio)
     return db_portfolio
 
-@app.get("/portfolios/", response_model=list[Portfolio])
+@app.get("/portfolios/", response_model=List[PortfolioResponse])
 async def get_portfolios(
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    return db.query(models.Portfolio).filter(models.Portfolio.owner_id == current_user.id).all()
+    return db.query(Portfolio).filter(Portfolio.owner_id == current_user.id).all()
 
-@app.post("/positions/", response_model=Position)
+@app.post("/positions/", response_model=PositionResponse)
 async def create_position(
     position: PositionCreate,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    # Verify portfolio ownership
-    portfolio = db.query(models.Portfolio).filter(
-        models.Portfolio.id == position.portfolio_id,
-        models.Portfolio.owner_id == current_user.id
+    portfolio = db.query(Portfolio).filter(
+        Portfolio.id == position.portfolio_id,
+        Portfolio.owner_id == current_user.id
     ).first()
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
-    
-    db_position = models.Position(**position.dict())
+
+    db_position = Position(**position.dict())
     db.add(db_position)
     db.commit()
     db.refresh(db_position)
     return db_position
 
-@app.post("/trades/", response_model=Trade)
+@app.post("/trades/", response_model=TradeResponse)
 async def create_trade(
     trade: TradeCreate,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    # Verify position ownership
-    position = db.query(models.Position).join(models.Portfolio).filter(
-        models.Position.id == trade.position_id,
-        models.Portfolio.owner_id == current_user.id
+    position = db.query(Position).join(Portfolio).filter(
+        Position.id == trade.position_id,
+        Portfolio.owner_id == current_user.id
     ).first()
     if not position:
         raise HTTPException(status_code=404, detail="Position not found")
-    
-    # Create trade
-    db_trade = models.Trade(**trade.dict())
+
+    db_trade = Trade(**trade.dict())
     db.add(db_trade)
-    
-    # Update position
+
     if trade.type == "buy":
         new_quantity = position.quantity + trade.quantity
         new_cost = (position.quantity * position.average_price) + (trade.quantity * trade.price)
         position.average_price = new_cost / new_quantity
         position.quantity = new_quantity
-    else:  # sell
+    else:
         if trade.quantity > position.quantity:
             raise HTTPException(status_code=400, detail="Insufficient position quantity")
         position.quantity -= trade.quantity
-    
+
     db.commit()
     db.refresh(db_trade)
     return db_trade
 
-@app.post("/watchlists/", response_model=Watchlist)
+@app.post("/watchlists/", response_model=WatchlistResponse)
 async def create_watchlist(
     watchlist: WatchlistCreate,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    db_watchlist = models.Watchlist(**watchlist.dict(), owner_id=current_user.id)
+    db_watchlist = Watchlist(**watchlist.dict(), owner_id=current_user.id)
     db.add(db_watchlist)
     db.commit()
     db.refresh(db_watchlist)
     return db_watchlist
 
-@app.get("/watchlists/", response_model=list[Watchlist])
+@app.get("/watchlists/", response_model=List[WatchlistResponse])
 async def get_watchlists(
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    return db.query(models.Watchlist).filter(models.Watchlist.owner_id == current_user.id).all()
+    return db.query(Watchlist).filter(Watchlist.owner_id == current_user.id).all()
 
-@app.post("/alerts/", response_model=Alert)
+@app.post("/alerts/", response_model=AlertResponse)
 async def create_alert(
     alert: AlertCreate,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    db_alert = models.Alert(**alert.dict(), owner_id=current_user.id)
+    db_alert = Alert(**alert.dict(), owner_id=current_user.id)
     db.add(db_alert)
     db.commit()
     db.refresh(db_alert)
     return db_alert
 
-@app.get("/alerts/", response_model=list[Alert])
+@app.get("/alerts/", response_model=List[AlertResponse])
 async def get_alerts(
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    return db.query(models.Alert).filter(models.Alert.owner_id == current_user.id).all()
+    return db.query(Alert).filter(Alert.owner_id == current_user.id).all()
 
 @app.get("/portfolios/{portfolio_id}/analytics")
 async def get_portfolio_analytics(
     portfolio_id: int,
     start_date: str = None,
     end_date: str = None,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    # Verify portfolio ownership
-    portfolio = db.query(models.Portfolio).filter(
-        models.Portfolio.id == portfolio_id,
-        models.Portfolio.owner_id == current_user.id
+    portfolio = db.query(Portfolio).filter(
+        Portfolio.id == portfolio_id,
+        Portfolio.owner_id == current_user.id
     ).first()
     
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
     
-    # Get positions
-    positions = db.query(models.Position).filter(
-        models.Position.portfolio_id == portfolio_id
+    positions = db.query(Position).filter(
+        Position.portfolio_id == portfolio_id
     ).all()
     
     if not positions:
         raise HTTPException(status_code=404, detail="No positions found")
     
-    # Calculate metrics
     metrics = calculate_portfolio_metrics(positions, start_date, end_date)
     if not metrics:
         raise HTTPException(status_code=404, detail="Could not calculate metrics")
@@ -488,27 +557,24 @@ async def get_portfolio_correlation(
     portfolio_id: int,
     start_date: str = None,
     end_date: str = None,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    # Verify portfolio ownership
-    portfolio = db.query(models.Portfolio).filter(
-        models.Portfolio.id == portfolio_id,
-        models.Portfolio.owner_id == current_user.id
+    portfolio = db.query(Portfolio).filter(
+        Portfolio.id == portfolio_id,
+        Portfolio.owner_id == current_user.id
     ).first()
     
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
     
-    # Get positions
-    positions = db.query(models.Position).filter(
-        models.Position.portfolio_id == portfolio_id
+    positions = db.query(Position).filter(
+        Position.portfolio_id == portfolio_id
     ).all()
     
     if not positions:
         raise HTTPException(status_code=404, detail="No positions found")
     
-    # Calculate correlation matrix
     correlation = calculate_correlation_matrix(positions, start_date, end_date)
     if not correlation:
         raise HTTPException(status_code=404, detail="Could not calculate correlation")
@@ -518,32 +584,28 @@ async def get_portfolio_correlation(
 @app.post("/portfolios/{portfolio_id}/email-summary")
 async def email_portfolio_summary(
     portfolio_id: int,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    # Verify portfolio ownership
-    portfolio = db.query(models.Portfolio).filter(
-        models.Portfolio.id == portfolio_id,
-        models.Portfolio.owner_id == current_user.id
+    portfolio = db.query(Portfolio).filter(
+        Portfolio.id == portfolio_id,
+        Portfolio.owner_id == current_user.id
     ).first()
     
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
     
-    # Get positions
-    positions = db.query(models.Position).filter(
-        models.Position.portfolio_id == portfolio_id
+    positions = db.query(Position).filter(
+        Position.portfolio_id == portfolio_id
     ).all()
     
     if not positions:
         raise HTTPException(status_code=404, detail="No positions found")
     
-    # Calculate metrics
     metrics = calculate_portfolio_metrics(positions)
     if not metrics:
         raise HTTPException(status_code=404, detail="Could not calculate metrics")
     
-    # Send email
     try:
         await send_portfolio_summary(current_user.email, metrics)
         return {"message": "Portfolio summary email sent"}
@@ -555,21 +617,19 @@ async def email_portfolio_summary(
 async def rebalance_portfolio(
     portfolio_id: int,
     target_weights: TargetWeights,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    # Verify portfolio ownership
-    portfolio = db.query(models.Portfolio).filter(
-        models.Portfolio.id == portfolio_id,
-        models.Portfolio.owner_id == current_user.id
+    portfolio = db.query(Portfolio).filter(
+        Portfolio.id == portfolio_id,
+        Portfolio.owner_id == current_user.id
     ).first()
     
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
     
-    # Get positions
-    positions = db.query(models.Position).filter(
-        models.Position.portfolio_id == portfolio_id
+    positions = db.query(Position).filter(
+        Position.portfolio_id == portfolio_id
     ).all()
     
     if not positions:
@@ -593,21 +653,19 @@ async def optimize_portfolio(
     risk_tolerance: float = 0.5,
     min_weight: float = 0.05,
     max_weight: float = 0.4,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    # Verify portfolio ownership
-    portfolio = db.query(models.Portfolio).filter(
-        models.Portfolio.id == portfolio_id,
-        models.Portfolio.owner_id == current_user.id
+    portfolio = db.query(Portfolio).filter(
+        Portfolio.id == portfolio_id,
+        Portfolio.owner_id == current_user.id
     ).first()
     
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
     
-    # Get positions
-    positions = db.query(models.Position).filter(
-        models.Position.portfolio_id == portfolio_id
+    positions = db.query(Position).filter(
+        Position.portfolio_id == portfolio_id
     ).all()
     
     if not positions:
@@ -628,32 +686,28 @@ async def optimize_portfolio(
 @app.post("/portfolios/{portfolio_id}/email-summary")
 async def email_portfolio_summary(
     portfolio_id: int,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    # Verify portfolio ownership
-    portfolio = db.query(models.Portfolio).filter(
-        models.Portfolio.id == portfolio_id,
-        models.Portfolio.owner_id == current_user.id
+    portfolio = db.query(Portfolio).filter(
+        Portfolio.id == portfolio_id,
+        Portfolio.owner_id == current_user.id
     ).first()
     
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
     
-    # Get positions
-    positions = db.query(models.Position).filter(
-        models.Position.portfolio_id == portfolio_id
+    positions = db.query(Position).filter(
+        Position.portfolio_id == portfolio_id
     ).all()
     
     if not positions:
         raise HTTPException(status_code=404, detail="No positions found")
     
-    # Calculate metrics
     metrics = calculate_portfolio_metrics(positions)
     if not metrics:
         raise HTTPException(status_code=404, detail="Could not calculate metrics")
     
-    # Send email
     try:
         await send_portfolio_summary(current_user.email, metrics)
         return {"message": "Portfolio summary email sent"}
@@ -665,21 +719,19 @@ async def email_portfolio_summary(
 async def rebalance_portfolio(
     portfolio_id: int,
     target_weights: TargetWeights,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    # Verify portfolio ownership
-    portfolio = db.query(models.Portfolio).filter(
-        models.Portfolio.id == portfolio_id,
-        models.Portfolio.owner_id == current_user.id
+    portfolio = db.query(Portfolio).filter(
+        Portfolio.id == portfolio_id,
+        Portfolio.owner_id == current_user.id
     ).first()
     
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
     
-    # Get positions
-    positions = db.query(models.Position).filter(
-        models.Position.portfolio_id == portfolio_id
+    positions = db.query(Position).filter(
+        Position.portfolio_id == portfolio_id
     ).all()
     
     if not positions:
@@ -703,21 +755,19 @@ async def optimize_portfolio(
     risk_tolerance: float = 0.5,
     min_weight: float = 0.05,
     max_weight: float = 0.4,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    # Verify portfolio ownership
-    portfolio = db.query(models.Portfolio).filter(
-        models.Portfolio.id == portfolio_id,
-        models.Portfolio.owner_id == current_user.id
+    portfolio = db.query(Portfolio).filter(
+        Portfolio.id == portfolio_id,
+        Portfolio.owner_id == current_user.id
     ).first()
     
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
     
-    # Get positions
-    positions = db.query(models.Position).filter(
-        models.Position.portfolio_id == portfolio_id
+    positions = db.query(Position).filter(
+        Position.portfolio_id == portfolio_id
     ).all()
     
     if not positions:
@@ -735,98 +785,29 @@ async def optimize_portfolio(
         logger.error(f"Error optimizing portfolio weights: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.websocket("/ws/market")
-async def websocket_endpoint(
-    websocket: WebSocket,
-    token: str = None,
-    db: Session = Depends(get_db)
-):
-    if token:
-        try:
-            user = await get_current_user(token, db)
-        except HTTPException:
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-            return
-    
-    client_id = await manager.connect(websocket)
-    
-    try:
-        while True:
-            message = await websocket.receive_json()
-            
-            if "action" not in message or "symbol" not in message:
-                await websocket.send_json({"error": "Invalid message format"})
-                continue
-            
-            action = message["action"]
-            symbol = message["symbol"].upper()
-            
-            try:
-                # Validate symbol
-                MarketDataRequest(symbol=symbol)
-                
-                if action == "subscribe":
-                    await manager.subscribe_to_symbol(client_id, symbol)
-                    
-                    # Start background task for symbol if it's the first subscriber
-                    if len(manager.symbol_subscribers.get(symbol, set())) == 1:
-                        task = asyncio.create_task(fetch_real_time_data(symbol))
-                        manager.background_tasks.add(task)
-                        task.add_done_callback(manager.background_tasks.discard)
-                    
-                    await websocket.send_json({
-                        "type": "subscription_success",
-                        "symbol": symbol
-                    })
-                
-                elif action == "unsubscribe":
-                    await manager.unsubscribe_from_symbol(client_id, symbol)
-                    await websocket.send_json({
-                        "type": "unsubscription_success",
-                        "symbol": symbol
-                    })
-                
-                else:
-                    await websocket.send_json({
-                        "type": "error",
-                        "error": "Invalid action"
-                    })
-            
-            except InvalidSymbolError as e:
-                await websocket.send_json({
-                    "type": "error",
-                    "error": str(e)
-                })
-            
-    except Exception as e:
-        logger.error(f"WebSocket error for client {client_id}: {str(e)}")
-    finally:
-        manager.disconnect(client_id)
-
-# Social feature endpoints
 @app.post("/portfolios/{portfolio_id}/share")
 async def share_portfolio(
     portfolio_id: int,
     share_data: dict,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    portfolio = db.query(models.Portfolio).filter(
-        models.Portfolio.id == portfolio_id,
-        models.Portfolio.owner_id == current_user.id
+    portfolio = db.query(Portfolio).filter(
+        Portfolio.id == portfolio_id,
+        Portfolio.owner_id == current_user.id
     ).first()
     
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
     
-    shared_with = db.query(models.User).filter(
-        models.User.id == share_data["user_id"]
+    shared_with = db.query(User).filter(
+        User.id == share_data["user_id"]
     ).first()
     
     if not shared_with:
         raise HTTPException(status_code=404, detail="User not found")
     
-    share = models.PortfolioShare(
+    share = PortfolioShare(
         portfolio_id=portfolio.id,
         shared_with_id=shared_with.id,
         permission=share_data.get("permission", "read")
@@ -839,11 +820,11 @@ async def share_portfolio(
 
 @app.get("/portfolios/shared")
 async def get_shared_portfolios(
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    shares = db.query(models.PortfolioShare).filter(
-        models.PortfolioShare.shared_with_id == current_user.id
+    shares = db.query(PortfolioShare).filter(
+        PortfolioShare.shared_with_id == current_user.id
     ).all()
     
     portfolios = []
@@ -862,25 +843,25 @@ async def get_shared_portfolios(
 @app.post("/users/{user_id}/follow")
 async def follow_user(
     user_id: int,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     if user_id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot follow yourself")
     
-    user_to_follow = db.query(models.User).filter(models.User.id == user_id).first()
+    user_to_follow = db.query(User).filter(User.id == user_id).first()
     if not user_to_follow:
         raise HTTPException(status_code=404, detail="User not found")
     
-    existing_follow = db.query(models.UserFollow).filter(
-        models.UserFollow.follower_id == current_user.id,
-        models.UserFollow.following_id == user_id
+    existing_follow = db.query(UserFollow).filter(
+        UserFollow.follower_id == current_user.id,
+        UserFollow.following_id == user_id
     ).first()
     
     if existing_follow:
         raise HTTPException(status_code=400, detail="Already following this user")
     
-    follow = models.UserFollow(
+    follow = UserFollow(
         follower_id=current_user.id,
         following_id=user_id
     )
@@ -893,12 +874,12 @@ async def follow_user(
 @app.delete("/users/{user_id}/unfollow")
 async def unfollow_user(
     user_id: int,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    follow = db.query(models.UserFollow).filter(
-        models.UserFollow.follower_id == current_user.id,
-        models.UserFollow.following_id == user_id
+    follow = db.query(UserFollow).filter(
+        UserFollow.follower_id == current_user.id,
+        UserFollow.following_id == user_id
     ).first()
     
     if not follow:
@@ -910,11 +891,11 @@ async def unfollow_user(
 
 @app.get("/users/followers")
 async def get_followers(
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    followers = db.query(models.UserFollow).filter(
-        models.UserFollow.following_id == current_user.id
+    followers = db.query(UserFollow).filter(
+        UserFollow.following_id == current_user.id
     ).all()
     
     return [
@@ -928,11 +909,11 @@ async def get_followers(
 
 @app.get("/users/following")
 async def get_following(
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    following = db.query(models.UserFollow).filter(
-        models.UserFollow.follower_id == current_user.id
+    following = db.query(UserFollow).filter(
+        UserFollow.follower_id == current_user.id
     ).all()
     
     return [
@@ -948,23 +929,14 @@ async def get_following(
 async def create_comment(
     portfolio_id: int,
     comment_data: dict,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    portfolio = db.query(models.Portfolio).filter(models.Portfolio.id == portfolio_id).first()
+    portfolio = db.query(Portfolio).filter(Portfolio.id == portfolio_id).first()
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
     
-    # Check if portfolio is public or shared with the user
-    if not portfolio.is_public and portfolio.owner_id != current_user.id:
-        share = db.query(models.PortfolioShare).filter(
-            models.PortfolioShare.portfolio_id == portfolio_id,
-            models.PortfolioShare.shared_with_id == current_user.id
-        ).first()
-        if not share:
-            raise HTTPException(status_code=403, detail="Not authorized to comment on this portfolio")
-    
-    comment = models.Comment(
+    comment = Comment(
         portfolio_id=portfolio_id,
         user_id=current_user.id,
         content=comment_data["content"]
@@ -978,25 +950,16 @@ async def create_comment(
 @app.get("/portfolios/{portfolio_id}/comments")
 async def get_comments(
     portfolio_id: int,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    portfolio = db.query(models.Portfolio).filter(models.Portfolio.id == portfolio_id).first()
+    portfolio = db.query(Portfolio).filter(Portfolio.id == portfolio_id).first()
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
     
-    # Check if portfolio is public or shared with the user
-    if not portfolio.is_public and portfolio.owner_id != current_user.id:
-        share = db.query(models.PortfolioShare).filter(
-            models.PortfolioShare.portfolio_id == portfolio_id,
-            models.PortfolioShare.shared_with_id == current_user.id
-        ).first()
-        if not share:
-            raise HTTPException(status_code=403, detail="Not authorized to view comments")
-    
-    comments = db.query(models.Comment).filter(
-        models.Comment.portfolio_id == portfolio_id
-    ).order_by(models.Comment.created_at.desc()).all()
+    comments = db.query(Comment).filter(
+        Comment.portfolio_id == portfolio_id
+    ).order_by(Comment.created_at.desc()).all()
     
     return [
         {
@@ -1009,18 +972,15 @@ async def get_comments(
         for comment in comments
     ]
 
-# Activity endpoints
 @app.get("/activities/feed")
 async def get_activity_feed(
     skip: int = 0,
     limit: int = 50,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Get activity feed for current user"""
     activities = ActivityService.get_feed_activities(db, current_user.id, skip, limit)
     
-    # Enrich activities with user and target object information
     enriched_activities = []
     for activity in activities:
         activity_dict = {
@@ -1036,9 +996,8 @@ async def get_activity_feed(
             "created_at": activity.created_at
         }
         
-        # Add target object details based on type
         if activity.target_type == "portfolio":
-            portfolio = db.query(models.Portfolio).get(activity.target_id)
+            portfolio = db.query(Portfolio).get(activity.target_id)
             if portfolio:
                 activity_dict["target"] = {
                     "id": portfolio.id,
@@ -1054,21 +1013,17 @@ async def get_user_activities(
     user_id: int,
     skip: int = 0,
     limit: int = 50,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Get activities for a specific user"""
-    # Check if user exists
-    user = db.query(models.User).filter(models.User.id == user_id).first()
+    user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Check if user has permission to view activities
     if user_id != current_user.id:
-        # Check if user is being followed
-        is_following = db.query(models.UserFollow).filter(
-            models.UserFollow.follower_id == current_user.id,
-            models.UserFollow.following_id == user_id
+        is_following = db.query(UserFollow).filter(
+            UserFollow.follower_id == current_user.id,
+            UserFollow.following_id == user_id
         ).first()
         if not is_following:
             raise HTTPException(status_code=403, detail="Not authorized to view activities")
@@ -1076,16 +1031,14 @@ async def get_user_activities(
     activities = ActivityService.get_user_activities(db, user_id, skip, limit)
     return activities
 
-# Notification endpoints
 @app.get("/notifications")
 async def get_notifications(
     unread_only: bool = False,
     skip: int = 0,
     limit: int = 50,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Get notifications for current user"""
     notifications = NotificationService.get_user_notifications(
         db, current_user.id, unread_only, skip, limit
     )
@@ -1094,10 +1047,9 @@ async def get_notifications(
 @app.post("/notifications/{notification_id}/read")
 async def mark_notification_read(
     notification_id: int,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Mark a notification as read"""
     success = NotificationService.mark_as_read(db, notification_id, current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Notification not found")
@@ -1105,29 +1057,48 @@ async def mark_notification_read(
 
 @app.post("/notifications/read-all")
 async def mark_all_notifications_read(
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Mark all notifications as read"""
     count = NotificationService.mark_all_as_read(db, current_user.id)
     return {"message": f"Marked {count} notifications as read"}
 
 @app.put("/users/notification-preferences")
 async def update_notification_preferences(
     preferences: dict,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Update user's notification preferences"""
-    user = db.query(models.User).filter(models.User.id == current_user.id).first()
+    user = db.query(User).filter(User.id == current_user.id).first()
     user.notification_preferences.update(preferences)
     db.commit()
     return {"message": "Notification preferences updated"}
 
 @app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(check_price_alerts(SessionLocal(), models.Alert))
+    asyncio.create_task(check_price_alerts(SessionLocal(), Alert))
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import os
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
+    HOST = os.getenv("STONKS_HOST", "127.0.0.1")
+    PORT = int(os.getenv("STONKS_PORT", "8000"))
+    ENV = os.getenv("STONKS_ENV", "development")
+
+    if ENV == "production" and HOST == "0.0.0.0":
+        import logging
+        logging.warning(
+            "Warning: Server is configured to bind to all interfaces. "
+            "Make sure this is intended for production use."
+        )
+
+    uvicorn.run(
+        app,
+        host=HOST,
+        port=PORT,
+        reload=(ENV == "development")
+    )

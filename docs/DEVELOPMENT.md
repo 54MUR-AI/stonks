@@ -51,6 +51,9 @@ backend/
 ├── models/          # SQLAlchemy models
 ├── routers/         # FastAPI route handlers
 ├── services/        # Business logic
+├── analytics/       # Financial analysis modules
+│   ├── indicators/  # Technical indicators
+│   └── benchmarks/  # Market benchmark data
 ├── tests/          # Test suite
 └── utils/          # Helper functions
 ```
@@ -90,6 +93,40 @@ alembic upgrade head
 # Rollback migration
 alembic downgrade -1
 ```
+
+#### API Development Guidelines
+
+1. Portfolio Metrics Endpoint
+   - Use query parameters for customization
+   - Support multiple time ranges
+   - Include technical indicators
+   - Add benchmark comparisons
+   - Return normalized data for charts
+
+2. WebSocket Connections
+   - Implement auto-reconnect
+   - Handle connection errors
+   - Manage subscription state
+   - Monitor connection health
+
+3. Technical Indicators
+   - Follow standard calculation methods
+   - Support customizable parameters
+   - Return formatted chart data
+   - Handle edge cases and errors
+
+4. Benchmark Comparisons
+   - Support major market indices
+   - Normalize data for comparison
+   - Cache frequently used data
+   - Handle API rate limits
+
+#### Error Handling
+- Use appropriate HTTP status codes
+- Provide detailed error messages
+- Handle WebSocket disconnections
+- Validate input parameters
+- Log errors for debugging
 
 ### Frontend Development
 
@@ -131,6 +168,19 @@ npm test -- --coverage
 # Run specific test file
 npm test -- src/components/Portfolio.test.tsx
 ```
+
+#### Chart Components
+- Use TradingView Lightweight Charts
+- Support multiple chart types
+- Handle real-time updates
+- Implement technical indicators
+- Add benchmark overlays
+
+#### WebSocket Integration
+- Implement connection manager
+- Handle reconnection logic
+- Manage subscription state
+- Update UI components
 
 ### API Development
 

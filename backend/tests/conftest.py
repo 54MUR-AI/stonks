@@ -50,6 +50,7 @@ def client(db):
 def test_user(db):
     user = User(
         email="test@example.com",
+        username="testuser",
         hashed_password="$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LHr9v.X9BkAAKJHZe"  # password = test123
     )
     db.add(user)
