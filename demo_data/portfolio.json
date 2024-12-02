@@ -1,0 +1,78 @@
+{
+  "id": 1,
+  "name": "Demo Tech Portfolio",
+  "creation_date": "2023-12-03",
+  "initial_value": 1000000.0,
+  "positions": [
+    {
+      "symbol": "AAPL",
+      "quantity": 177,
+      "entry_price": 403.9620171875188,
+      "current_price": 437.92618246248776,
+      "entry_date": "2023-12-03"
+    },
+    {
+      "symbol": "MSFT",
+      "quantity": 485,
+      "entry_price": 292.1937230067032,
+      "current_price": 321.20932477179167,
+      "entry_date": "2023-12-03"
+    },
+    {
+      "symbol": "GOOGL",
+      "quantity": 197,
+      "entry_price": 275.6275248595873,
+      "current_price": 291.8346507284165,
+      "entry_date": "2023-12-03"
+    },
+    {
+      "symbol": "AMZN",
+      "quantity": 142,
+      "entry_price": 388.8056943804438,
+      "current_price": 354.3284650303186,
+      "entry_date": "2023-12-03"
+    },
+    {
+      "symbol": "NVDA",
+      "quantity": 316,
+      "entry_price": 210.35419640129277,
+      "current_price": 198.23675408420516,
+      "entry_date": "2023-12-03"
+    },
+    {
+      "symbol": "META",
+      "quantity": 652,
+      "entry_price": 221.5653428472601,
+      "current_price": 226.35082352964196,
+      "entry_date": "2023-12-03"
+    },
+    {
+      "symbol": "TSLA",
+      "quantity": 1138,
+      "entry_price": 88.69533872606345,
+      "current_price": 88.20270459679834,
+      "entry_date": "2023-12-03"
+    },
+    {
+      "symbol": "JPM",
+      "quantity": 290,
+      "entry_price": 351.75967885762117,
+      "current_price": 379.11448454675855,
+      "entry_date": "2023-12-03"
+    },
+    {
+      "symbol": "V",
+      "quantity": 890,
+      "entry_price": 125.01542065751346,
+      "current_price": 129.33334705033107,
+      "entry_date": "2023-12-03"
+    },
+    {
+      "symbol": "PYPL",
+      "quantity": 544,
+      "entry_price": 279.46579325543996,
+      "current_price": 294.29537018716474,
+      "entry_date": "2023-12-03"
+    }
+  ]
+}

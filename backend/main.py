@@ -27,7 +27,10 @@ from auth_service import AuthService, get_current_active_user
 from activity_service import ActivityService, NotificationService
 from analytics import calculate_portfolio_metrics, calculate_correlation_matrix
 from email_service import send_alert_email, send_portfolio_summary, check_price_alerts
-from .routers import auth, users, portfolios, portfolio_metrics, websocket
+from .routers import (
+    auth, users, portfolios, portfolio_metrics, websocket, rebalancing, trading, visualization
+)
+from .services.realtime_analytics import realtime_analytics_service
 
 # Load environment variables
 load_dotenv()
@@ -37,8 +40,8 @@ Base.metadata.create_all(bind=engine)
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="Stonks API",
-    description="Financial Market Analysis Platform API",
+    title="STONKS Financial Platform",
+    description="Advanced financial market analysis and portfolio management platform",
     version="1.0.0"
 )
 
@@ -151,6 +154,9 @@ app.include_router(auth.router, prefix="/api", tags=["auth"])
 app.include_router(users.router, prefix="/api", tags=["users"])
 app.include_router(portfolios.router, prefix="/api", tags=["portfolios"])
 app.include_router(portfolio_metrics.router, prefix="/api", tags=["portfolio-metrics"])
+app.include_router(rebalancing.router, prefix="/api", tags=["portfolio-rebalancing"])
+app.include_router(trading.router, prefix="/api", tags=["trading"])
+app.include_router(visualization.router, prefix="/api", tags=["visualization"])
 app.include_router(websocket.router, prefix="/api", tags=["websocket"])
 
 # Request logging middleware

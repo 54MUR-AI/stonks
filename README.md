@@ -18,13 +18,38 @@ A comprehensive web application for real-time market analysis, portfolio managem
   - MACD (Moving Average Convergence Divergence)
 - Multi-timeframe analysis (1D, 1W, 1M, 3M, 6M, 1Y, ALL)
 - AI-powered market insights and predictions
+- Deep learning-based price predictions with confidence intervals
+- Market regime detection and analysis
+- Support and resistance level calculation
+- Technical signal generation
+- Fundamental analysis integration
+- Market sentiment analysis
 - Benchmark comparisons with major indices (SPY, QQQ, DIA, IWM)
 
 ### Portfolio Management
 - Portfolio tracking and performance metrics
-- Modern Portfolio Theory optimization
+- Advanced Portfolio Optimization:
+  - Mean-Variance Optimization
+  - Risk Parity Optimization
+  - Black-Litterman Optimization
+  - Hierarchical Risk Parity
 - Automated portfolio rebalancing
-- Risk analysis and correlation matrices
+- Automated trading system:
+  - Configurable trading parameters
+  - Real-time portfolio monitoring
+  - Stop loss and take profit management
+  - Anomaly-based trading signals
+  - Risk-aware execution
+  - Liquidity analysis
+- Comprehensive Risk Management:
+  - Real-time risk alerts via WebSocket
+  - Volatility monitoring
+  - Drawdown tracking
+  - VaR breach detection
+  - Correlation analysis
+  - Concentration risk monitoring
+  - Market regime analysis
+- Portfolio stress testing
 - Maximum drawdown analysis
 - Real-time portfolio value updates via WebSocket
 - Position-level volatility tracking
@@ -38,8 +63,10 @@ A comprehensive web application for real-time market analysis, portfolio managem
 - Public/private portfolio visibility
 
 ### Notifications & Alerts
-- Real-time price alerts
+- Real-time risk alerts with severity levels (low, medium, high, critical)
 - Portfolio performance notifications
+- Market regime change alerts
+- Risk threshold breach notifications
 - Daily portfolio summaries via email
 - Activity feed with social interactions
 - Customizable notification preferences
@@ -53,6 +80,16 @@ A comprehensive web application for real-time market analysis, portfolio managem
 - Authentication: JWT-based with python-jose
 - WebSocket support for real-time data
 - Email integration with fastapi-mail
+- Machine Learning:
+  - TensorFlow/Keras for deep learning
+  - scikit-learn for ensemble models
+  - statsmodels for statistical analysis
+  - arch for volatility modeling
+- Trading System:
+  - Asynchronous execution engine
+  - Risk-aware order management
+  - Real-time portfolio monitoring
+  - Automated rebalancing
 
 ### Frontend
 - Framework: React
@@ -191,6 +228,22 @@ Response includes:
 - Benchmark comparison data
 ```
 
+### Portfolio Management & Risk
+```
+POST /api/portfolio/{portfolio_id}/optimize
+- Optimize portfolio allocation using various strategies
+- Supports mean-variance, risk parity, Black-Litterman, and hierarchical optimization
+- Customizable constraints and targets
+
+WebSocket /ws/risk-alerts/{portfolio_id}
+- Real-time risk alerts for portfolio monitoring
+- Supports multiple alert types and severity levels
+
+GET /api/portfolio/{portfolio_id}/risk-alerts/history
+- Historical risk alerts with filtering capabilities
+- Filter by date range, severity, and alert type
+```
+
 ## Testing
 
 Run backend tests:
@@ -258,3 +311,22 @@ npm test
 - Complete API documentation
 - Add user guides
 - Create developer documentation
+
+## Advanced Features
+
+### Portfolio Optimization
+The platform offers multiple portfolio optimization strategies:
+- Mean-Variance Optimization: Maximize returns for given risk level
+- Risk Parity: Equal risk contribution from all assets
+- Black-Litterman: Incorporate market views into optimization
+- Hierarchical Risk Parity: Tree-based portfolio optimization
+
+### Risk Management System
+Real-time risk monitoring and alerts:
+- Volatility tracking and threshold alerts
+- Drawdown monitoring with configurable limits
+- Value at Risk (VaR) breach detection
+- Correlation analysis and diversification alerts
+- Position concentration monitoring
+- Market regime change detection
+- Stress testing scenarios

@@ -1,0 +1,58 @@
+{
+  "MSFT": {
+    "timestamp": "2024-11-16",
+    "type": "Volatility Event",
+    "severity": "Medium",
+    "price_change": -0.12215266750513311,
+    "volume_change": 1.5339386065513372,
+    "description": "Significant market movement detected with unusual trading patterns."
+  },
+  "AMZN": {
+    "timestamp": "2024-11-07",
+    "type": "Volatility Event",
+    "severity": "Medium",
+    "price_change": -0.021600295137558484,
+    "volume_change": 2.2817387827520488,
+    "description": "Significant market movement detected with unusual trading patterns."
+  },
+  "NVDA": {
+    "timestamp": "2024-11-28",
+    "type": "Volume Surge",
+    "severity": "Medium",
+    "price_change": -0.07918472305128645,
+    "volume_change": 1.7774411899880274,
+    "description": "Significant market movement detected with unusual trading patterns."
+  },
+  "META": {
+    "timestamp": "2024-11-10",
+    "type": "Correlation Break",
+    "severity": "Medium",
+    "price_change": 0.014103574711524097,
+    "volume_change": 1.8284388409264793,
+    "description": "Significant market movement detected with unusual trading patterns."
+  },
+  "JPM": {
+    "timestamp": "2024-11-17",
+    "type": "Volatility Event",
+    "severity": "High",
+    "price_change": 0.10844360875452433,
+    "volume_change": 2.7806383804417516,
+    "description": "Significant market movement detected with unusual trading patterns."
+  },
+  "V": {
+    "timestamp": "2024-11-05",
+    "type": "Volatility Event",
+    "severity": "Low",
+    "price_change": -0.04147308778012261,
+    "volume_change": 1.706416051632953,
+    "description": "Significant market movement detected with unusual trading patterns."
+  },
+  "PYPL": {
+    "timestamp": "2024-11-18",
+    "type": "Correlation Break",
+    "severity": "Low",
+    "price_change": 0.08879735954989823,
+    "volume_change": 2.060627991499349,
+    "description": "Significant market movement detected with unusual trading patterns."
+  }
+}

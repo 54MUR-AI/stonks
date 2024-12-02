@@ -51,6 +51,16 @@ backend/
 ├── models/          # SQLAlchemy models
 ├── routers/         # FastAPI route handlers
 ├── services/        # Business logic
+│   ├── portfolio_optimization/  # Portfolio optimization strategies
+│   │   ├── mean_variance.py
+│   │   ├── risk_parity.py
+│   │   ├── black_litterman.py
+│   │   └── hierarchical.py
+│   ├── risk_alerts/           # Risk monitoring system
+│   │   ├── monitors/
+│   │   ├── alerts/
+│   │   └── websocket/
+│   └── market_data/          # Market data services
 ├── analytics/       # Financial analysis modules
 │   ├── indicators/  # Technical indicators
 │   └── benchmarks/  # Market benchmark data
@@ -96,30 +106,106 @@ alembic downgrade -1
 
 #### API Development Guidelines
 
-1. Portfolio Metrics Endpoint
+1. Portfolio Optimization
+   - Implement multiple optimization strategies
+   - Support customizable constraints
+   - Handle large datasets efficiently
+   - Cache optimization results
+   - Validate input parameters
+   - Return detailed metadata
+
+2. Risk Alert System
+   - Monitor multiple risk metrics
+   - Support real-time alerts
+   - Implement severity levels
+   - Handle WebSocket connections
+   - Store alert history
+   - Filter and query alerts
+
+3. Portfolio Metrics Endpoint
    - Use query parameters for customization
    - Support multiple time ranges
    - Include technical indicators
    - Add benchmark comparisons
    - Return normalized data for charts
 
-2. WebSocket Connections
+4. WebSocket Connections
    - Implement auto-reconnect
    - Handle connection errors
    - Manage subscription state
    - Monitor connection health
 
-3. Technical Indicators
+5. Technical Indicators
    - Follow standard calculation methods
    - Support customizable parameters
    - Return formatted chart data
    - Handle edge cases and errors
 
-4. Benchmark Comparisons
+6. Benchmark Comparisons
    - Support major market indices
    - Normalize data for comparison
    - Cache frequently used data
    - Handle API rate limits
+
+#### Portfolio Optimization Development
+
+1. Mean-Variance Optimization
+   - Implement efficient frontier calculation
+   - Support risk and return constraints
+   - Handle missing data
+   - Optimize for large portfolios
+   - Return detailed statistics
+
+2. Risk Parity
+   - Implement risk contribution calculation
+   - Support risk budgeting
+   - Handle correlation matrices
+   - Optimize iteratively
+   - Monitor convergence
+
+3. Black-Litterman
+   - Support market equilibrium
+   - Handle investor views
+   - Calculate posterior distribution
+   - Implement confidence levels
+   - Return detailed analytics
+
+4. Hierarchical Risk Parity
+   - Implement clustering
+   - Handle correlation matrices
+   - Support quasi-diagonalization
+   - Optimize recursively
+   - Return tree structure
+
+#### Risk Alert System Development
+
+1. Risk Monitors
+   - Implement multiple monitoring strategies
+   - Support real-time calculations
+   - Handle large datasets
+   - Cache intermediate results
+   - Support custom thresholds
+
+2. Alert Generation
+   - Implement severity calculation
+   - Support multiple alert types
+   - Handle alert aggregation
+   - Manage alert lifecycle
+   - Store alert history
+
+3. WebSocket Management
+   - Handle multiple connections
+   - Implement subscription system
+   - Manage connection state
+   - Handle reconnection
+   - Monitor connection health
+
+4. Alert Storage
+   - Implement efficient storage
+   - Support filtering and querying
+   - Handle data retention
+   - Manage alert lifecycle
+   - Support analytics
 
 #### Error Handling
 - Use appropriate HTTP status codes
