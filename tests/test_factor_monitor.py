@@ -52,7 +52,7 @@ class TestFactorMonitor(unittest.TestCase):
     def test_volatility_monitoring(self):
         """Test volatility spike detection"""
         # Inject more pronounced volatility spike
-        self.factor_returns.iloc[-30:, 1] *= 5  # Increase volatility more significantly
+        self.factor_returns.iloc[-30:, 0] *= 5  # Increase volatility more significantly for Factor_0
         
         alerts = self.monitor.monitor_factor_volatility(self.factor_returns)
         
@@ -60,7 +60,7 @@ class TestFactorMonitor(unittest.TestCase):
         self.assertGreater(len(alerts), 0)
         alert = alerts[0]
         self.assertEqual(alert.alert_type, 'VOLATILITY_SPIKE')
-        self.assertEqual(alert.factor_name, 'Factor_1')
+        self.assertEqual(alert.factor_name, 'Factor_0')  # Updated to match the factor we modified
         self.assertIn('z_score', alert.metrics)
         self.assertIn('volatility', alert.metrics)
     

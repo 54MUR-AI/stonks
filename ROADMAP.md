@@ -26,6 +26,23 @@
 - Benchmark comparison features
 - Real-time WebSocket market data
 - Interactive portfolio dashboard
+- Factor Analysis and Monitoring
+  - Factor Analysis Service
+    * Statistical factor extraction using PCA
+    * Portfolio return decomposition
+    * Factor contribution analysis
+    * Comprehensive factor summary generation
+  - Factor Prediction Service
+    * Machine learning-based factor return prediction
+    * Feature importance analysis
+    * Cross-validated model training
+    * Multiple model support (Random Forest, Gradient Boosting)
+  - Factor Monitoring Service
+    * Real-time factor behavior monitoring
+    * Anomaly detection for returns and volatility
+    * Correlation regime change detection
+    * Alert generation with severity levels
+    * Comprehensive monitoring dashboard
 
 ## Short Term (Q2 2024)
 
@@ -178,6 +195,22 @@
 - ✅ Benchmark comparison system
 - ✅ Advanced portfolio optimization
 - ✅ Real-time risk monitoring
+- ✅ Factor Analysis and Monitoring
+  - Next Steps
+    1. Real-time Data Integration
+       - Connect to live market data feeds
+       - Implement streaming factor updates
+       - Set up real-time alert notifications
+
+    2. Advanced Analytics
+       - Implement regime detection algorithms
+       - Add machine learning-based anomaly detection
+       - Develop factor rotation strategies
+
+    3. User Interface
+       - Create interactive monitoring dashboard
+       - Add alert management system
+       - Implement custom alert configuration
 
 ## Core Infrastructure
 
