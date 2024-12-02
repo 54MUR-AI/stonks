@@ -4,7 +4,7 @@
   <img src="logo.png" alt="STONKS" width="400"/>
 </p>
 
-A comprehensive web application for real-time market analysis, portfolio management, and AI-powered investment insights.
+STONKS (Smart Trading Options for Novices and Knowledgeable Speculators) is a comprehensive web application for real-time market analysis, portfolio management, and AI-powered investment insights.
 
 ## Key Features
 

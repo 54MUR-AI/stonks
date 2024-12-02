@@ -1,21 +1,21 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import Dict, List, Tuple, Optional
 import logging
 import scipy.stats as stats
+import matplotlib.gridspec as gridspec
 
 logger = logging.getLogger(__name__)
 
-class BacktestVisualizer:
-    """Visualization tools for backtest results"""
+class VisualizationService:
+    def __init__(self):
+        """Initialize the visualization service"""
+        # Set style
+        plt.style.use('seaborn-v0_8')  # Use a valid style name
+        sns.set_palette("husl")
     
-    def __init__(self, style: str = 'darkgrid'):
-        """Initialize visualizer with specified style"""
-        sns.set_style(style)
-        plt.rcParams['figure.figsize'] = (12, 6)
-        
     def plot_portfolio_performance(self,
                                  portfolio_values: pd.Series,
                                  benchmark_values: Optional[pd.Series] = None,
@@ -202,3 +202,129 @@ class BacktestVisualizer:
         plt.grid(True)
         plt.xticks(rotation=45)
         plt.tight_layout()
+
+    def plot_factor_analysis(self, factor_summary: Dict,
+                        save_path: Optional[str] = None) -> None:
+        """
+        Create comprehensive factor analysis visualization
+        
+        Args:
+            factor_summary: Dictionary from PortfolioFactorAnalyzer.get_factor_summary()
+            save_path: Optional path to save the plot
+        """
+        fig = plt.figure(figsize=(20, 12))
+        gs = gridspec.GridSpec(2, 3, figure=fig)
+        
+        # 1. Factor Returns Over Time
+        ax1 = fig.add_subplot(gs[0, 0])
+        factor_returns = factor_summary['factor_returns']
+        cumulative_returns = (1 + factor_returns).cumprod()
+        cumulative_returns.plot(ax=ax1)
+        ax1.set_title('Cumulative Factor Returns')
+        ax1.set_xlabel('Date')
+        ax1.set_ylabel('Cumulative Return')
+        ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        
+        # 2. Factor Risk Contribution
+        ax2 = fig.add_subplot(gs[0, 1])
+        risk_contrib = factor_summary['factor_metrics']['Contribution to Risk']
+        risk_contrib.plot(kind='bar', ax=ax2)
+        ax2.set_title('Factor Risk Contribution')
+        ax2.set_ylabel('Contribution to Total Risk')
+        
+        # 3. Factor-Asset Correlations Heatmap
+        ax3 = fig.add_subplot(gs[0, 2])
+        correlations = factor_summary['factor_correlations']
+        sns.heatmap(correlations, annot=True, cmap='RdBu', center=0, ax=ax3)
+        ax3.set_title('Factor-Asset Correlations')
+        
+        # 4. Factor Performance Metrics
+        ax4 = fig.add_subplot(gs[1, :2])
+        metrics = factor_summary['factor_metrics']
+        metrics_to_plot = ['Annualized Return', 'Annualized Vol', 'Sharpe Ratio']
+        metrics[metrics_to_plot].plot(kind='bar', ax=ax4)
+        ax4.set_title('Factor Performance Metrics')
+        ax4.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        
+        # 5. Cumulative Variance Explained
+        ax5 = fig.add_subplot(gs[1, 2])
+        cum_var = factor_summary['factor_analysis']['cumulative_variance']
+        cum_var.plot(kind='bar', ax=ax5)
+        ax5.set_title('Cumulative Variance Explained')
+        ax5.set_ylabel('Cumulative Proportion')
+        
+        plt.tight_layout()
+        
+        if save_path:
+            plt.savefig(save_path, bbox_inches='tight', dpi=300)
+        else:
+            plt.show()
+        
+        plt.close()
+
+    def plot_factor_contribution_over_time(self, factor_returns: pd.DataFrame,
+                                     save_path: Optional[str] = None) -> None:
+        """
+        Create stacked area plot of factor contributions over time
+        
+        Args:
+            factor_returns: DataFrame of factor returns from decompose_returns()
+            save_path: Optional path to save the plot
+        """
+        plt.figure(figsize=(12, 6))
+        
+        # Calculate cumulative returns
+        cumulative_returns = (1 + factor_returns).cumprod()
+        
+        # Create stacked area plot
+        cumulative_returns.plot(kind='area', stacked=True)
+        
+        plt.title('Factor Return Contribution Over Time')
+        plt.xlabel('Date')
+        plt.ylabel('Cumulative Return')
+        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.grid(True)
+        
+        if save_path:
+            plt.savefig(save_path, bbox_inches='tight', dpi=300)
+        else:
+            plt.show()
+        
+        plt.close()
+
+    def plot_rolling_factor_risk(self, factor_returns: pd.DataFrame,
+                           window: int = 63,  # ~3 months
+                           save_path: Optional[str] = None) -> None:
+        """
+        Plot rolling risk metrics for each factor
+        
+        Args:
+            factor_returns: DataFrame of factor returns
+            window: Rolling window size in days
+            save_path: Optional path to save the plot
+        """
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8))
+        
+        # Calculate rolling volatility
+        rolling_vol = factor_returns.rolling(window).std() * np.sqrt(252)
+        rolling_vol.plot(ax=ax1)
+        ax1.set_title(f'{window}-day Rolling Volatility')
+        ax1.set_ylabel('Annualized Volatility')
+        ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        
+        # Calculate rolling Sharpe ratio
+        rolling_ret = factor_returns.rolling(window).mean() * 252
+        rolling_sharpe = rolling_ret / rolling_vol
+        rolling_sharpe.plot(ax=ax2)
+        ax2.set_title(f'{window}-day Rolling Sharpe Ratio')
+        ax2.set_ylabel('Sharpe Ratio')
+        ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        
+        plt.tight_layout()
+        
+        if save_path:
+            plt.savefig(save_path, bbox_inches='tight', dpi=300)
+        else:
+            plt.show()
+        
+        plt.close()
