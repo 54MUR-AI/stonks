@@ -169,30 +169,76 @@ async def test_rate_limit_burst_handling(market_data_adapter):
     assert all(t.total_seconds() >= adapter.provider.config.min_request_interval * 1.5 
               for t in request_times[3:])
 
+class SimpleErrorProvider(MockProvider):
+    """Simple provider that always raises an error for quotes but allows connection"""
+    def __init__(self, config: MarketDataConfig):
+        super().__init__(config)
+        self.connected = False
+        self.connect_attempts = 0
+        
+    async def connect(self) -> None:
+        self.connect_attempts += 1
+        self.connected = True
+        
+    async def disconnect(self) -> None:
+        self.connected = False
+        
+    async def get_quote(self, symbol: str) -> float:
+        if not self.connected:
+            raise ConnectionError("Not connected")
+        # Only raise QuoteError if we're connected
+        raise QuoteError("Test error")
+
 @pytest.mark.asyncio
-async def test_dual_parameter_error_callback(mock_config):
+async def test_dual_parameter_error_callback():
     """Test error callback with both error and context parameters"""
     error_data = {}
+    config = MarketDataConfig(
+        credentials=MarketDataCredentials(api_key="test_key"),
+        base_url="https://test.example.com",
+        websocket_url="wss://test.example.com/ws",
+        min_request_interval=0.1
+    )
     
-    async def error_callback(error, context):
+    def error_callback(error, context):  # Sync callback for simplicity
         error_data['error'] = error
         error_data['context'] = context
     
     service = MockRealTimeDataService()
-    adapter = MarketDataAdapter(ErrorInjectingProvider, mock_config, service, error_callback)
-    await adapter.start()
+    provider = SimpleErrorProvider(config)
+    adapter = MarketDataAdapter(
+        provider_class=lambda config: provider,  # Use instance directly
+        config=config,
+        realtime_service=service,
+        error_callback=error_callback,
+        max_retries=1  # Allow one connection attempt
+    )
     
     try:
-        # Inject error during quote retrieval
-        adapter.provider.inject_error = True
-        with pytest.raises(QuoteError):
+        # Start adapter and wait for connection
+        await adapter.start()
+        assert provider.connected, "Provider should be connected after start"
+        assert provider.connect_attempts == 1, "Should connect on first try"
+        
+        # Override max_retries for quote test
+        adapter.max_retries = 0
+        
+        # Should raise QuoteError and trigger callback
+        with pytest.raises(QuoteError) as exc_info:
             await adapter.get_quotes(["AAPL"])
         
-        # Verify both error and context were passed to callback
-        assert isinstance(error_data['error'], Exception)
-        assert error_data['context'].operation == "get_quote"
+        # Verify error and context
+        assert str(exc_info.value) == "Test error"
+        assert isinstance(error_data.get('error'), QuoteError)
+        assert isinstance(error_data.get('context'), ErrorContext)
         assert error_data['context'].symbols == ["AAPL"]
+        assert error_data['context'].operation == "get_quotes"
+        assert error_data['context'].retry_count == 0
+    
     finally:
+        # Clean up service first
+        await service.stop()
+        # Then stop adapter
         await adapter.stop()
 
 @pytest.mark.asyncio

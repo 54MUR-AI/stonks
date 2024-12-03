@@ -503,6 +503,83 @@ The market data services implement a robust testing strategy with comprehensive 
    - Document uncovered scenarios
    - Track coverage trends
 
+## Current Development Priorities
+
+### 1. Performance Dashboard
+- Real-time provider performance monitoring
+- Health metrics visualization
+- Latency and cache efficiency tracking
+- Performance analytics
+
+### 2. Provider Expansion
+- Integration of additional market data providers
+- Support for new asset classes
+- Provider-specific optimizations
+- Enhanced configuration templates
+- Comprehensive provider documentation
+
+### 3. Machine Learning Integration
+- Anomaly detection models
+- Performance forecasting
+- Intelligent cache prefetching
+- Optimal provider selection
+- Model training and validation pipelines
+
+### 4. Testing Infrastructure
+- Increase test coverage for core components
+- Performance benchmark implementation
+- End-to-end integration testing
+- Load and stress testing
+- Continuous monitoring validation
+
+## Development Guidelines
+
+### Performance Dashboard Development
+```typescript
+// Use React with TypeScript
+// Implement real-time WebSocket updates
+// Follow Material-UI design patterns
+// Use proper data visualization libraries
+interface ProviderMetrics {
+  health: HealthStatus;
+  latency: LatencyMetrics;
+  cacheEfficiency: CacheMetrics;
+  errorRate: ErrorMetrics;
+}
+```
+
+### Provider Integration
+```python
+# Follow the base provider interface
+# Implement proper error handling
+# Add comprehensive test coverage
+# Document provider-specific features
+class NewProvider(BaseProvider):
+    async def connect(self) -> None:
+        # Connection logic
+        pass
+
+    async def subscribe(self, symbol: str) -> None:
+        # Subscription logic
+        pass
+```
+
+### Machine Learning Pipeline
+```python
+# Use scikit-learn for models
+# Implement proper validation
+# Add model versioning
+# Document training procedures
+class PredictiveModel:
+    def train(self, data: pd.DataFrame) -> None:
+        # Training logic
+        pass
+
+    def predict(self, features: np.ndarray) -> np.ndarray:
+        # Prediction logic
+        pass
+```
+
 ## API Documentation
 
 See [API.md](API.md) for detailed API documentation.
@@ -540,7 +617,7 @@ See [API.md](API.md) for detailed API documentation.
    - Add architecture diagrams
    - Include sequence diagrams
    - Document error codes
-   - Add troubleshooting guides
+   - Provide usage examples
 
 3. **Monitoring**
    - Add performance metrics
@@ -553,3 +630,260 @@ See [API.md](API.md) for detailed API documentation.
    - Implement automated code review
    - Add dependency scanning
    - Improve CI/CD pipeline
+
+## Architecture Overview
+
+### Core Services
+
+#### Market Data Service
+- Provider integration
+- Data normalization
+- Cache management
+- Connection pooling
+
+#### Performance Monitor
+- Real-time metrics collection
+- Health monitoring
+- Resource utilization tracking
+- Performance analytics
+
+#### Alert Manager
+- Multi-level alerting
+- Provider-specific thresholds
+- Alert correlation
+- Alert history management
+
+#### Analytics Engine
+- Pattern detection
+- Root cause analysis
+- Anomaly prediction
+- Performance correlation
+- Machine learning models
+
+#### Notification Service
+- Multi-channel delivery
+- Template management
+- Delivery tracking
+- Channel-specific formatting
+
+#### Escalation Manager
+- Policy management
+- Level-based escalation
+- Automated actions
+- Resolution tracking
+
+### Development Workflow
+
+1. Code Organization
+```
+stonks/
+├── backend/
+│   ├── api/
+│   │   ├── market_data.py
+│   │   ├── performance.py
+│   │   ├── analytics.py
+│   │   └── escalation.py
+│   ├── services/
+│   │   ├── market_data/
+│   │   │   ├── provider.py
+│   │   │   ├── alerts.py
+│   │   │   ├── metrics.py
+│   │   │   ├── alert_analytics.py
+│   │   │   └── escalation.py
+│   │   ├── notifications/
+│   │   │   └── notification_manager.py
+│   │   └── analytics/
+│   │       └── ml_models.py
+│   └── utils/
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Performance/
+│   │   │   │   ├── Dashboard.tsx
+│   │   │   │   ├── AlertPanel.tsx
+│   │   │   │   └── Analytics.tsx
+│   │   │   └── Escalation/
+│   │   │       ├── PolicyEditor.tsx
+│   │   │       └── Dashboard.tsx
+│   │   └── services/
+│   └── public/
+└── config/
+    ├── providers.json
+    ├── thresholds.json
+    ├── notifications.json
+    └── escalation.json
+```
+
+2. Configuration Management
+
+#### Provider Configuration
+```json
+{
+  "providers": {
+    "alpha_vantage": {
+      "api_key": "your_key",
+      "base_url": "https://www.alphavantage.co/query",
+      "timeout": 5000,
+      "retry_count": 3
+    }
+  }
+}
+```
+
+#### Alert Thresholds
+```json
+{
+  "providers": {
+    "alpha_vantage": {
+      "latency": {
+        "warning": 300,
+        "error": 600,
+        "critical": 1000
+      }
+    }
+  }
+}
+```
+
+#### Escalation Policies
+```json
+{
+  "policies": {
+    "critical_latency": {
+      "conditions": {
+        "alert_type": "HIGH_LATENCY",
+        "severity": "CRITICAL"
+      },
+      "initial_level": "L1",
+      "escalation_delay": 900,
+      "max_level": "L3",
+      "actions": {
+        "L1": ["retry_connection"],
+        "L2": ["failover"],
+        "L3": ["emergency_shutdown"]
+      }
+    }
+  }
+}
+```
+
+3. API Endpoints
+
+#### Analytics API
+```python
+@router.get("/alerts/patterns")
+async def get_alert_patterns():
+    """Get current alert patterns"""
+    
+@router.get("/alerts/predictions")
+async def get_anomaly_predictions():
+    """Get current anomaly predictions"""
+    
+@router.get("/alerts/analytics/summary")
+async def get_analytics_summary():
+    """Get analytics summary"""
+```
+
+#### Escalation API
+```python
+@router.get("/escalation/policies")
+async def get_escalation_policies():
+    """Get all escalation policies"""
+    
+@router.post("/escalation/policies")
+async def create_escalation_policy():
+    """Create new escalation policy"""
+    
+@router.get("/escalation/active")
+async def get_active_escalations():
+    """Get all active escalations"""
+```
+
+4. Development Guidelines
+
+#### Alert Analytics
+- Use machine learning models sparingly
+- Implement model versioning
+- Monitor prediction accuracy
+- Handle model failures gracefully
+
+#### Escalation Management
+- Keep policies simple and focused
+- Test automated actions thoroughly
+- Implement proper logging
+- Handle edge cases gracefully
+
+#### Performance Considerations
+- Cache frequently accessed data
+- Use async operations where possible
+- Implement proper error handling
+- Monitor resource usage
+
+5. Testing
+
+#### Unit Tests
+```python
+def test_alert_pattern_detection():
+    """Test alert pattern detection"""
+    
+def test_anomaly_prediction():
+    """Test anomaly prediction"""
+    
+def test_escalation_policy():
+    """Test escalation policy execution"""
+```
+
+#### Integration Tests
+```python
+async def test_end_to_end_escalation():
+    """Test complete escalation flow"""
+    
+async def test_analytics_pipeline():
+    """Test analytics pipeline"""
+```
+
+6. Monitoring and Debugging
+
+#### Logging
+```python
+logger.info("Starting pattern analysis")
+logger.warning("High prediction uncertainty")
+logger.error("Failed to execute automated action")
+```
+
+#### Metrics
+- Alert frequency
+- Pattern detection accuracy
+- Prediction accuracy
+- Escalation response times
+- Action success rates
+
+7. Deployment
+
+#### Environment Variables
+```bash
+STONKS_ENV=production
+LOG_LEVEL=info
+ML_MODEL_PATH=/path/to/models
+NOTIFICATION_TEMPLATES=/path/to/templates
+```
+
+#### Health Checks
+- API endpoints
+- Database connections
+- Cache availability
+- Model serving status
+
+8. Documentation
+
+#### API Documentation
+- Use OpenAPI/Swagger
+- Include example requests/responses
+- Document error codes
+- Provide usage examples
+
+#### Code Documentation
+- Document complex algorithms
+- Explain ML model assumptions
+- Document configuration options
+- Include troubleshooting guides

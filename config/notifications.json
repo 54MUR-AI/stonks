@@ -1,0 +1,55 @@
+{
+  "providers": {
+    "alpha_vantage": {
+      "notifications": {
+        "email": {
+          "enabled": true,
+          "recipients": ["alerts@yourdomain.com"],
+          "severity_threshold": "warning"
+        },
+        "slack": {
+          "enabled": true,
+          "channel": "#market-data-alerts",
+          "severity_threshold": "error"
+        }
+      }
+    },
+    "yahoo_finance": {
+      "notifications": {
+        "email": {
+          "enabled": true,
+          "recipients": ["alerts@yourdomain.com"],
+          "severity_threshold": "error"
+        },
+        "slack": {
+          "enabled": true,
+          "channel": "#market-data-alerts",
+          "severity_threshold": "critical"
+        }
+      }
+    }
+  },
+  "default": {
+    "notifications": {
+      "email": {
+        "enabled": true,
+        "recipients": ["alerts@yourdomain.com"],
+        "severity_threshold": "error"
+      },
+      "slack": {
+        "enabled": true,
+        "channel": "#market-data-alerts",
+        "severity_threshold": "error"
+      }
+    }
+  },
+  "email_settings": {
+    "smtp_host": "smtp.yourdomain.com",
+    "smtp_port": 587,
+    "username": "alerts@yourdomain.com",
+    "use_tls": true
+  },
+  "slack_settings": {
+    "webhook_url": "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+  }
+}

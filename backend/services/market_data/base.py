@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Dict, Optional, Any
 import pandas as pd
+from .circuit_breaker import CircuitBreaker
+from .metrics import ProviderMetrics
 
 class MarketDataError(Exception):
     """Base exception class for market data related errors"""
@@ -10,30 +12,103 @@ class MarketDataError(Exception):
 
 @dataclass
 class MarketDataCredentials:
-    """Base class for market data provider credentials"""
+    """Credentials for market data provider"""
     api_key: str
     api_secret: Optional[str] = None
-    additional_params: Dict[str, Any] = None
+    account_id: Optional[str] = None
 
-@dataclass
 class MarketDataConfig:
     """Configuration for market data providers"""
-    credentials: MarketDataCredentials
-    base_url: str
-    websocket_url: str
-    request_timeout: int = 30
-    max_retries: int = 3
-    retry_delay: int = 1
-    rate_limit_max: int = 10  # Maximum number of requests per window
-    rate_limit_window: float = 1.0  # Time window in seconds
-    min_request_interval: float = 0.1  # Minimum time between requests
+    
+    def __init__(
+        self,
+        credentials: MarketDataCredentials,
+        base_url: str,
+        websocket_url: str,
+        request_timeout: int = 30,
+        max_retries: int = 3,
+        circuit_breaker_threshold: int = 5,
+        circuit_breaker_timeout: float = 60.0,
+        rate_limit_max: int = 10,  # Maximum number of requests per window
+        rate_limit_window: float = 1.0,  # Time window in seconds
+        min_request_interval: float = 0.1  # Minimum time between requests
+    ):
+        """Initialize configuration.
+        
+        Args:
+            credentials: Provider credentials
+            base_url: Base URL for REST API
+            websocket_url: WebSocket URL for streaming
+            request_timeout: Request timeout in seconds
+            max_retries: Maximum number of retries
+            circuit_breaker_threshold: Failures before circuit opens
+            circuit_breaker_timeout: Seconds before circuit recovery
+            rate_limit_max: Maximum number of requests per window
+            rate_limit_window: Time window in seconds
+            min_request_interval: Minimum time between requests
+        """
+        self.credentials = credentials
+        self.base_url = base_url
+        self.websocket_url = websocket_url
+        self.request_timeout = request_timeout
+        self.max_retries = max_retries
+        self.circuit_breaker_threshold = circuit_breaker_threshold
+        self.circuit_breaker_timeout = circuit_breaker_timeout
+        self.rate_limit_max = rate_limit_max
+        self.rate_limit_window = rate_limit_window
+        self.min_request_interval = min_request_interval
 
 class MarketDataProvider(ABC):
     """Abstract base class for market data providers"""
     
     def __init__(self, config: MarketDataConfig):
+        """Initialize provider.
+        
+        Args:
+            config: Provider configuration
+        """
         self.config = config
-        self._validate_config()
+        self._circuit_breaker = CircuitBreaker(
+            failure_threshold=config.circuit_breaker_threshold,
+            recovery_timeout=config.circuit_breaker_timeout
+        )
+        self._metrics = ProviderMetrics()
+        
+    @property
+    def metrics(self) -> Dict[str, Any]:
+        """Get provider metrics"""
+        return self._metrics.get_metrics()
+        
+    @property
+    def circuit_breaker_metrics(self) -> Dict[str, Any]:
+        """Get circuit breaker metrics"""
+        return self._circuit_breaker.metrics
+        
+    async def _execute_with_circuit_breaker(self, operation: str, func, *args, **kwargs):
+        """Execute function with circuit breaker and metrics.
+        
+        Args:
+            operation: Name of the operation
+            func: Function to execute
+            *args: Positional arguments
+            **kwargs: Keyword arguments
+            
+        Returns:
+            Result from function
+        """
+        start_time = datetime.now()
+        try:
+            result = await self._circuit_breaker.call(func, *args, **kwargs)
+            duration = (datetime.now() - start_time).total_seconds()
+            self._metrics.record_latency(operation, duration)
+            self._metrics.record_request(operation, success=True)
+            return result
+        except Exception as e:
+            duration = (datetime.now() - start_time).total_seconds()
+            self._metrics.record_latency(operation, duration)
+            self._metrics.record_request(operation, success=False)
+            self._metrics.record_error(type(e).__name__)
+            raise
         
     @abstractmethod
     async def connect(self) -> None:

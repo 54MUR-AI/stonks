@@ -7,15 +7,18 @@ import numpy as np
 import pandas as pd
 
 from .base import MarketDataProvider, MarketDataConfig
+from .circuit_breaker import CircuitBreaker
+from .metrics import Metrics
 
 class MockProvider(MarketDataProvider):
     """Mock market data provider for testing and development"""
     
     def __init__(self, config: MarketDataConfig):
+        """Initialize the mock provider"""
         super().__init__(config)
+        self._connected = False
         self._subscribed_symbols = set()
         self._symbol_metadata = {}  # Track metadata per symbol
-        self.connected = False
         self._stop_streaming = False
         self._stream_task = None
         self._last_request_time = datetime.now() - timedelta(seconds=1.0)
@@ -30,7 +33,23 @@ class MockProvider(MarketDataProvider):
         self._reconnect_attempt = 0
         self._last_error = None
         self._data_buffer = asyncio.Queue(maxsize=1000)  # Buffer for backpressure handling
+        self._enforce_rate_limit = asyncio.Lock()
+        self._timeout_delay = 0.0
+        self._timeout_probability = 0.0
+        self._timeout_error = asyncio.TimeoutError("Operation timed out")
+        self._circuit_breaker = CircuitBreaker()
+        self._metrics = Metrics()
         
+    @property
+    def connected(self) -> bool:
+        """Get connection status"""
+        return self._connected
+
+    @connected.setter
+    def connected(self, value: bool):
+        """Set connection status"""
+        self._connected = value
+
     @property
     def subscribed_symbols(self) -> set:
         """Get the set of subscribed symbols"""
@@ -42,27 +61,30 @@ class MockProvider(MarketDataProvider):
         self._subscribed_symbols = value
         
     async def connect(self) -> None:
-        """Simulate connection establishment"""
-        if self.connected:
-            raise RuntimeError("Already connected")
+        """Connect to the mock provider"""
+        return await self._execute_with_circuit_breaker('connect', self._connect)
         
-        try:
-            await asyncio.sleep(0.1)  # Simulate network delay
-            self.connected = True
+    async def _connect(self) -> None:
+        """Internal connect implementation"""
+        if self._connected:
+            return
             
-            # Restart stream if we have subscriptions
-            if self._subscribed_symbols and not self._stream_task:
-                self._stop_streaming = False
-                self._stream_task = asyncio.create_task(self._stream_market_data())
-        except Exception as e:
-            self.connected = False
-            print(f"Connection error: {e}")
-            raise
-
+        await self._maybe_timeout()
+        self._connected = True
+        
+        # Restart stream if we have subscriptions
+        if self._subscribed_symbols and not self._stream_task:
+            self._stop_streaming = False
+            self._stream_task = asyncio.create_task(self._stream_market_data())
+            
     async def disconnect(self) -> None:
-        """Simulate disconnection"""
-        if not self.connected:
-            raise RuntimeError("Not connected")
+        """Disconnect from the mock provider"""
+        return await self._execute_with_circuit_breaker('disconnect', self._disconnect)
+        
+    async def _disconnect(self) -> None:
+        """Internal disconnect implementation"""
+        if not self._connected:
+            return
             
         # Stop streaming first
         if self._stream_task:
@@ -82,49 +104,51 @@ class MockProvider(MarketDataProvider):
             finally:
                 self._stream_task = None
                 
-        self.connected = False
+        self._connected = False
+        self._subscribed_symbols.clear()
         
     async def subscribe(self, symbols: List[str]) -> None:
         """Subscribe to mock market data stream"""
-        if not self.connected:
+        return await self._execute_with_circuit_breaker('subscribe', self._subscribe, symbols)
+        
+    async def _subscribe(self, symbols: List[str]) -> None:
+        """Internal subscribe implementation"""
+        if not self._connected:
             raise RuntimeError("Not connected to market data provider")
             
-        if not symbols:
-            return
-            
-        # Validate symbol count
+        # Check max symbols limit
         if len(self._subscribed_symbols) + len(symbols) > self._max_symbols:
-            raise ValueError(f"Maximum symbol limit ({self._max_symbols}) exceeded")
+            raise ValueError(f"Cannot subscribe to more than {self._max_symbols} symbols")
             
-        # Update subscriptions atomically
-        new_symbols = set()
+        await self._maybe_timeout()
+        
+        # Initialize metadata for new symbols
         for symbol in symbols:
-            try:
-                await self._validate_symbol(symbol)
-                new_symbols.add(symbol)
-            except ValueError as e:
-                print(f"Skipping invalid symbol: {e}")
-                continue
-                
-        self._subscribed_symbols.update(new_symbols)
+            await self._validate_symbol(symbol)
+            
+        self._subscribed_symbols.update(symbols)
         
         # Start streaming if needed
-        if new_symbols and not self._stream_task:
+        if symbols and not self._stream_task:
             self._stop_streaming = False
             try:
                 self._stream_task = asyncio.create_task(self._stream_market_data())
             except Exception as e:
                 # Rollback on failure
-                self._subscribed_symbols.difference_update(new_symbols)
+                self._subscribed_symbols.difference_update(symbols)
                 print(f"Failed to start stream task: {e}")
                 raise
-
+                
     async def unsubscribe(self, symbols: List[str]) -> None:
         """Unsubscribe from mock market data stream"""
-        if not symbols:
-            return
+        return await self._execute_with_circuit_breaker('unsubscribe', self._unsubscribe, symbols)
+        
+    async def _unsubscribe(self, symbols: List[str]) -> None:
+        """Internal unsubscribe implementation"""
+        if not self._connected:
+            raise RuntimeError("Not connected to market data provider")
             
-        # Update subscriptions atomically
+        await self._maybe_timeout()
         self._subscribed_symbols.difference_update(symbols)
         
         # Stop streaming if no more subscriptions
@@ -151,9 +175,27 @@ class MockProvider(MarketDataProvider):
         interval: str = "1min"
     ) -> pd.DataFrame:
         """Generate mock historical market data"""
-        if not self.connected:
+        return await self._execute_with_circuit_breaker(
+            'get_historical',
+            self._get_historical_data,
+            symbol,
+            start_date,
+            end_date,
+            interval
+        )
+        
+    async def _get_historical_data(
+        self,
+        symbol: str,
+        start_date: datetime,
+        end_date: Optional[datetime] = None,
+        interval: str = "1min"
+    ) -> pd.DataFrame:
+        """Internal historical data implementation"""
+        if not self._connected:
             raise RuntimeError("Not connected to market data provider")
             
+        await self._maybe_timeout()
         if not end_date:
             end_date = datetime.now()
             
@@ -180,7 +222,7 @@ class MockProvider(MarketDataProvider):
         prices = base_price * (1 + np.cumsum(returns))
         volumes = np.random.randint(1000, 10000, n_points)
         
-        return pd.DataFrame({
+        df = pd.DataFrame({
             'timestamp': dates,
             'open': prices,
             'high': prices * (1 + np.random.uniform(0, 0.002, n_points)),
@@ -189,65 +231,61 @@ class MockProvider(MarketDataProvider):
             'volume': volumes
         })
         
-    async def get_latest_quote(self, symbol: str) -> Dict[str, Any]:
-        """Get mock latest quote"""
-        if not self.connected:
-            raise RuntimeError("Not connected to market data provider")
+        # Record metrics
+        self._metrics.record_symbol_update(symbol, prices[-1], volumes[-1])
         
-        now = datetime.now()
-        
-        # Clean up old request times
-        self._request_times = [t for t in self._request_times 
-                              if (now - t).total_seconds() <= self._rate_limit_window]
-        
-        # Check rate limit
-        if len(self._request_times) >= self._rate_limit_max:
-            # Calculate required delay
-            oldest_request = self._request_times[0]
-            delay = self._rate_limit_window - (now - oldest_request).total_seconds()
-            if delay > 0:
-                await asyncio.sleep(delay)
-                now = datetime.now()
-        
-        # Ensure minimum delay between requests
-        if self._request_times:
-            time_since_last = (now - self._request_times[-1]).total_seconds()
-            if time_since_last < self._min_request_interval:
-                await asyncio.sleep(self._min_request_interval - time_since_last)
-                now = datetime.now()
-        
-        # Add current request time
-        self._request_times.append(now)
-        
-        price = 100.0 + random.uniform(-5, 5)
-        return {
-            'symbol': symbol,
-            'timestamp': now,
-            'bid': price - 0.01,
-            'ask': price + 0.01,
-            'last': price,
-            'volume': random.randint(100, 1000),
-            'metadata': {
-                'timestamp': now,
-                'source': 'mock',
-                'latency_ms': random.randint(1, 50)
-            }
-        }
+        return df
         
     async def get_quote(self, symbol: str) -> float:
         """Get mock quote price"""
-        if not self.connected:
+        return await self._execute_with_circuit_breaker('get_quote', self._get_quote, symbol)
+        
+    async def _get_quote(self, symbol: str) -> float:
+        """Internal get quote implementation"""
+        if not self._connected:
             raise RuntimeError("Not connected to market data provider")
             
-        quote = await self.get_latest_quote(symbol)
-        return quote['last']
+        await self._maybe_timeout()
+        await self._validate_symbol(symbol)
         
+        async with self._enforce_rate_limit:
+            # Enforce rate limiting
+            now = datetime.now()
+            
+            # Clean up old request times
+            self._request_times = [t for t in self._request_times 
+                                if (now - t).total_seconds() <= self._rate_limit_window]
+            
+            # Check rate limit
+            if len(self._request_times) >= self._rate_limit_max:
+                # Calculate required delay
+                oldest_request = self._request_times[0]
+                delay = self._rate_limit_window - (now - oldest_request).total_seconds()
+                if delay > 0:
+                    await asyncio.sleep(delay)
+                    now = datetime.now()
+                    
+            # Add current request time
+            self._request_times.append(now)
+            
+            # Update metadata
+            self._symbol_metadata[symbol]['request_count'] += 1
+            
+            await asyncio.sleep(0.1)  # Simulate network delay
+            price = 100.0 + random.uniform(-10, 10)
+            self._symbol_metadata[symbol]['last_price'] = price
+            
+            # Record metrics
+            self._metrics.record_symbol_update(symbol, price, random.randint(100, 1000))
+            
+            return price
+            
     async def _stream_market_data(self) -> None:
         """Generate mock market data stream"""
         try:
             while not self._stop_streaming:
                 try:
-                    await self._maybe_inject_error()
+                    await self._maybe_timeout()
                     
                     for symbol in list(self._subscribed_symbols):
                         if self._stop_streaming:
@@ -308,40 +346,14 @@ class MockProvider(MarketDataProvider):
         finally:
             self._stop_streaming = True
             
-    def inject_error_rate(self, rate: float) -> None:
-        """Set the rate at which to inject errors for testing"""
-        if not 0 <= rate <= 1:
-            raise ValueError("Error injection rate must be between 0 and 1")
-        self._error_injection_rate = rate
-        
-    async def _maybe_inject_error(self) -> None:
-        """Potentially inject an error based on the error rate"""
-        if random.random() < self._error_injection_rate:
-            error_types = [
-                TimeoutError("Simulated timeout"),
-                ConnectionError("Simulated connection error"),
-                RuntimeError("Simulated runtime error"),
-                asyncio.CancelledError()
-            ]
-            raise random.choice(error_types)
-            
-    async def _validate_symbol(self, symbol: str) -> None:
-        """Validate a symbol and update its metadata"""
-        if not symbol or not isinstance(symbol, str):
-            raise ValueError(f"Invalid symbol: {symbol}")
-            
-        if symbol not in self._symbol_metadata:
-            self._symbol_metadata[symbol] = {
-                'first_seen': datetime.now(),
-                'request_count': 0,
-                'error_count': 0,
-                'last_price': None,
-                'status': 'active'
-            }
-            
     async def _handle_backpressure(self, data: Dict[str, Any]) -> None:
         """Handle backpressure in data streaming"""
         try:
+            # Initialize metadata if not exists
+            symbol = data['symbol']
+            if symbol not in self._symbol_metadata:
+                await self._validate_symbol(symbol)
+                
             await asyncio.wait_for(self._data_buffer.put(data), timeout=0.1)
         except asyncio.TimeoutError:
             print(f"Warning: Data buffer full, dropping update for {data['symbol']}")
@@ -364,3 +376,56 @@ class MockProvider(MarketDataProvider):
         """Validate the date range"""
         if start_date > end_date:
             return pd.DataFrame()  # Return empty DataFrame for invalid range
+
+    def set_timeout_simulation(self, delay: float = 0.1, probability: float = 0.0) -> None:
+        """Configure timeout simulation parameters"""
+        self._timeout_delay = delay
+        self._timeout_probability = probability
+        self._timeout_error = asyncio.TimeoutError("Operation timed out")
+        
+    async def _maybe_timeout(self) -> None:
+        """Potentially simulate a timeout based on configured probability"""
+        if random.random() < self._timeout_probability:
+            if self._timeout_delay > 0:
+                await asyncio.sleep(self._timeout_delay)
+            self._connected = False
+            raise self._timeout_error
+
+    async def _validate_symbol(self, symbol: str) -> None:
+        """Validate a symbol and update its metadata"""
+        if not symbol or not isinstance(symbol, str):
+            raise ValueError(f"Invalid symbol: {symbol}")
+            
+        if symbol not in self._symbol_metadata:
+            self._symbol_metadata[symbol] = {
+                'first_seen': datetime.now(),
+                'request_count': 0,
+                'error_count': 0,
+                'last_price': None,
+                'status': 'active'
+            }
+            
+    async def _maybe_inject_error(self) -> None:
+        """Potentially inject an error based on the error rate"""
+        if random.random() < self._error_injection_rate:
+            error_types = [
+                TimeoutError("Simulated timeout"),
+                ConnectionError("Simulated connection error"),
+                RuntimeError("Simulated runtime error"),
+                asyncio.CancelledError()
+            ]
+            raise random.choice(error_types)
+            
+    def inject_error_rate(self, rate: float) -> None:
+        """Set the rate at which to inject errors for testing"""
+        if not 0 <= rate <= 1:
+            raise ValueError("Error injection rate must be between 0 and 1")
+        self._error_injection_rate = rate
+
+    async def _execute_with_circuit_breaker(self, operation: str, func: callable, *args, **kwargs) -> Any:
+        """Execute a function with circuit breaker protection"""
+        try:
+            return await self._circuit_breaker.execute(operation, func, *args, **kwargs)
+        except Exception as e:
+            self._metrics.record_error(operation, str(e))
+            raise

@@ -9,6 +9,11 @@ STONKS (Smart Trading Options for Novices and Knowledgeable Speculators) is a co
 ## Key Features
 
 ### Market Analysis
+- Real-time market data with resilient provider switching:
+  - Automatic failover to backup providers
+  - Health-based provider selection
+  - Performance tracking and monitoring
+  - Exponential backoff with jitter
 - Real-time market data visualization for stocks, crypto, and other securities
 - Interactive charts with advanced technical indicators:
   - Simple Moving Average (SMA)
@@ -70,6 +75,106 @@ STONKS (Smart Trading Options for Novices and Knowledgeable Speculators) is a co
 - Daily portfolio summaries via email
 - Activity feed with social interactions
 - Customizable notification preferences
+
+### Alert Analytics
+- Pattern recognition
+- Root cause probability analysis
+- Machine learning-based anomaly detection
+- Predictive alerting
+- Analytics dashboard
+
+### Incident Management
+- Multi-level escalation (L1-Emergency)
+- Automated response actions
+- Configurable escalation policies
+- Time-based auto-escalation
+- Multi-channel notifications
+
+### Notification System
+- Multi-channel support (Email, Slack, SMS)
+- Configurable notification rules
+- Provider-specific settings
+- Severity-based routing
+- Notification tracking
+
+## Market Data Providers 
+
+The system supports multiple market data providers with intelligent failover, health monitoring, and comprehensive management capabilities:
+
+### Features
+- Advanced Provider Management:
+  * Real-time health monitoring dashboard
+  * Automated provider failover based on health metrics
+  * Predictive health analysis with anomaly detection
+  * Comprehensive provider management console
+  * Priority-based provider selection
+- Resilient Error Handling:
+  * Circuit breaker pattern implementation
+  * Intelligent retry logic with backoff
+  * Rate limiting and backpressure handling
+  * Comprehensive error tracking
+- Performance Optimization:
+  * Real-time metrics collection and analysis
+  * Latency monitoring and optimization
+  * Cache management with TTL support
+  * Memory-aware operation
+- Health Monitoring:
+  * Real-time health status tracking
+  * Metric history and trend analysis
+  * Anomaly detection and alerting
+  * Performance forecasting
+  * Event timeline tracking
+
+### Supported Providers
+- Alpha Vantage (Production)
+- Yahoo Finance (Production)
+- Mock Provider (Testing/Development)
+
+### Management Console
+The provider management console offers:
+- Real-time provider status monitoring
+- Add/Edit/Delete provider functionality
+- Start/Stop controls
+- Priority management
+- Health status visualization
+- Configuration management
+- Performance analytics
+
+### Configuration
+Market data providers can be configured using the `MarketDataConfig` class:
+
+```python
+config = MarketDataConfig(
+    credentials=MarketDataCredentials(api_key="your_key"),
+    base_url="provider_url",
+    websocket_url="ws_url",
+    request_timeout=1,  # seconds
+    max_retries=3
+)
+```
+
+### Usage Example
+```python
+# Initialize provider
+provider = MockProvider(config)
+await provider.connect()
+
+# Subscribe to symbols
+await provider.subscribe(["AAPL", "MSFT"])
+
+# Get historical data
+df = await provider.get_historical_data(
+    symbol="AAPL",
+    start_date=datetime.now() - timedelta(days=7),
+    interval="1h"
+)
+
+# Get real-time quotes
+quote = await provider.get_quote("AAPL")
+
+# Get symbol statistics
+stats = await provider.get_symbol_stats("AAPL")
+```
 
 ## Tech Stack
 

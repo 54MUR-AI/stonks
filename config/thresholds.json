@@ -1,0 +1,67 @@
+{
+  "default": {
+    "latency": {
+      "warning": 500,
+      "error": 1000,
+      "critical": 2000
+    },
+    "error_rate": {
+      "warning": 5,
+      "error": 10,
+      "critical": 20
+    },
+    "health": {
+      "warning": 80,
+      "error": 60,
+      "critical": 40
+    },
+    "cache": {
+      "warning": 70,
+      "error": 50
+    }
+  },
+  "providers": {
+    "alpha_vantage": {
+      "latency": {
+        "warning": 300,
+        "error": 600,
+        "critical": 1000
+      },
+      "error_rate": {
+        "warning": 3,
+        "error": 7,
+        "critical": 15
+      },
+      "health": {
+        "warning": 85,
+        "error": 70,
+        "critical": 50
+      },
+      "cache": {
+        "warning": 80,
+        "error": 60
+      }
+    },
+    "yahoo_finance": {
+      "latency": {
+        "warning": 800,
+        "error": 1500,
+        "critical": 3000
+      },
+      "error_rate": {
+        "warning": 8,
+        "error": 15,
+        "critical": 25
+      },
+      "health": {
+        "warning": 75,
+        "error": 55,
+        "critical": 35
+      },
+      "cache": {
+        "warning": 65,
+        "error": 45
+      }
+    }
+  }
+}
