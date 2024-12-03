@@ -4,6 +4,10 @@ from datetime import datetime
 from typing import List, Dict, Optional, Any
 import pandas as pd
 
+class MarketDataError(Exception):
+    """Base exception class for market data related errors"""
+    pass
+
 @dataclass
 class MarketDataCredentials:
     """Base class for market data provider credentials"""

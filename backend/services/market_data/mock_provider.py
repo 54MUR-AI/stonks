@@ -8,7 +8,7 @@ import pandas as pd
 
 from .base import MarketDataProvider, MarketDataConfig
 
-class MockMarketDataProvider(MarketDataProvider):
+class MockProvider(MarketDataProvider):
     """Mock market data provider for testing and development"""
     
     def __init__(self, config: MarketDataConfig):

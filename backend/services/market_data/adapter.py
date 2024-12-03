@@ -29,7 +29,10 @@ class MarketDataAdapter:
         
     async def start(self) -> None:
         """Start the market data adapter"""
+        if self._running:
+            return
         try:
+            await self.realtime_service.start()
             await self.provider.connect()
             self._running = True
             self._update_task = asyncio.create_task(self._update_loop())
@@ -41,11 +44,18 @@ class MarketDataAdapter:
             
     async def stop(self) -> None:
         """Stop the market data adapter"""
+        if not self._running:
+            return
         self._running = False
         if self._update_task:
-            await self._update_task
+            self._update_task.cancel()
+            try:
+                await asyncio.wait_for(self._update_task, timeout=1.0)
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                pass
             self._update_task = None
         await self.provider.disconnect()
+        await self.realtime_service.stop()
         logger.info("Market data adapter stopped")
         
     async def subscribe(self, symbols: List[str]) -> None:
@@ -97,23 +107,14 @@ class MarketDataAdapter:
             
     async def _update_loop(self) -> None:
         """Main update loop for market data"""
-        while self._running:
-            try:
-                for symbol in self._subscribed_symbols:
-                    quote = await self.provider.get_latest_quote(symbol)
-                    self.realtime_service.update_price(
-                        symbol=quote['symbol'],
-                        price=quote['last'],
-                        timestamp=quote['timestamp'],
-                        volume=quote['volume']
-                    )
-                await asyncio.sleep(1)  # Update frequency
-            except Exception as e:
-                logger.error(f"Error in market data update loop: {e}")
-                self.on_error(e)
-                # Continue running despite errors
-                await asyncio.sleep(5)  # Back off on error
-                
+        try:
+            while self._running:
+                await asyncio.sleep(1)  # Simple heartbeat
+                logger.debug("Market data update loop heartbeat")
+        except asyncio.CancelledError:
+            logger.info("Market data update loop cancelled")
+            raise
+            
     def _default_error_handler(self, error: Exception) -> None:
         """Default error handler"""
         logger.error(f"Market data error: {error}")

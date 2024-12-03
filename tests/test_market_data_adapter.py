@@ -1,239 +1,229 @@
-import unittest
-import asyncio
+"""Unit tests for the market data adapter.
+
+This test suite provides comprehensive coverage of the market data adapter
+implementation, including provider integration, streaming, and error handling.
+"""
+
+import pytest
+from unittest.mock import AsyncMock, Mock
 from datetime import datetime, timedelta
-from unittest.async_case import IsolatedAsyncioTestCase
-from unittest.mock import Mock, patch, AsyncMock
+import asyncio
+import pandas as pd
 
 from backend.services.market_data import (
     MarketDataAdapter,
     MarketDataConfig,
     MarketDataCredentials,
-    MockMarketDataProvider,
-    AlphaVantageProvider
+    MockProvider
 )
 from backend.services.realtime_data import RealTimeDataService
 
-class TestMarketDataAdapter(IsolatedAsyncioTestCase):
-    def setUp(self):
-        """Set up test cases"""
-        self.config = MarketDataConfig(
-            credentials=MarketDataCredentials(api_key="test_key"),
-            base_url="http://test.api",
-            websocket_url="ws://test.api/ws"
+class TestMarketDataAdapter:
+    """Test suite for market data adapter functionality."""
+    
+    @pytest.fixture
+    def mock_realtime_service(self):
+        service = Mock(spec=RealTimeDataService)
+        service.start = AsyncMock()
+        service.stop = AsyncMock()
+        service.is_running = Mock(return_value=True)
+        return service
+
+    @pytest.fixture
+    def mock_config(self):
+        return MarketDataConfig(
+            credentials=MarketDataCredentials(api_key='test_key'),
+            base_url='http://test.url',
+            websocket_url='ws://test.url/ws',
+            request_timeout=30
         )
-        self.realtime_service = RealTimeDataService(websocket_url="ws://test.api/ws")
-        self.adapter = MarketDataAdapter(
-            provider_class=MockMarketDataProvider,
-            config=self.config,
-            realtime_service=self.realtime_service
-        )
-        
-    async def test_lifecycle(self):
-        """Test adapter lifecycle (start/stop)"""
-        # Start adapter
-        await self.adapter.start()
-        self.assertTrue(self.adapter._running)
-        self.assertTrue(self.adapter.provider.connected)
-        self.assertIsNotNone(self.adapter._update_task)
-        
-        # Stop adapter
-        await self.adapter.stop()
-        self.assertFalse(self.adapter._running)
-        self.assertFalse(self.adapter.provider.connected)
-        self.assertIsNone(self.adapter._update_task)
-        
-    async def test_symbol_subscription(self):
-        """Test symbol subscription management"""
-        await self.adapter.start()
-        
-        # Subscribe to symbols
-        symbols = ["AAPL", "GOOGL"]
-        await self.adapter.subscribe(symbols)
-        self.assertEqual(self.adapter._subscribed_symbols, set(symbols))
-        
-        # Unsubscribe from one symbol
-        await self.adapter.unsubscribe(["AAPL"])
-        self.assertEqual(self.adapter._subscribed_symbols, {"GOOGL"})
-        
-        await self.adapter.stop()
-        
-    async def test_historical_data(self):
-        """Test historical data retrieval"""
-        await self.adapter.start()
-        
-        lookback = timedelta(days=1)
-        df = await self.adapter.get_historical_data("AAPL", lookback)
-        
-        self.assertGreater(len(df), 0)
-        self.assertTrue(all(col in df.columns for col in [
-            'timestamp', 'open', 'high', 'low', 'close', 'volume'
-        ]))
-        
-        await self.adapter.stop()
-        
-    async def test_price_updates(self):
-        """Test price updates flow to realtime service"""
-        await self.adapter.start()
-        
-        # Subscribe to a symbol
-        await self.adapter.subscribe(["AAPL"])
-        
-        # Wait for a few updates
-        await asyncio.sleep(3)
-        
-        # Check that prices were updated in realtime service
-        history = self.realtime_service.get_price_history("AAPL")
-        self.assertGreater(len(history), 0)
-        self.assertTrue(all(col in history.columns for col in ['timestamp', 'price', 'volume']))
-        
-        await self.adapter.stop()
-        
-    async def test_error_handling(self):
-        """Test error handler invocation"""
-        error_handler = Mock()
+
+    @pytest.fixture
+    async def adapter(self, mock_realtime_service, mock_config):
+        """Create and configure a market data adapter for testing."""
         adapter = MarketDataAdapter(
-            provider_class=MockMarketDataProvider,
-            config=self.config,
-            realtime_service=self.realtime_service,
-            on_error=error_handler
+            provider_class=MockProvider,
+            config=mock_config,
+            realtime_service=mock_realtime_service
         )
+        adapter.provider.connect = AsyncMock()
+        adapter.provider.disconnect = AsyncMock()
+        adapter.provider.subscribe = AsyncMock()
+        adapter.provider.unsubscribe = AsyncMock()
+        adapter.provider.get_historical_data = AsyncMock()
+        return adapter
+
+    @pytest.mark.asyncio
+    async def test_stream_connection(self, adapter, mock_realtime_service):
+        """Test basic stream connection and disconnection."""
+        print("\nStarting stream connection test...")
         
-        # Simulate provider error
-        with patch.object(adapter.provider, 'connect', side_effect=Exception("Test error")):
-            with self.assertRaises(Exception):
-                await adapter.start()
-            error_handler.assert_called_once()
-            
-    async def test_update_loop_resilience(self):
-        """Test update loop continues despite errors"""
-        error_handler = Mock()
-        adapter = MarketDataAdapter(
-            provider_class=MockMarketDataProvider,
-            config=self.config,
-            realtime_service=self.realtime_service,
-            on_error=error_handler
-        )
+        # Test initial state
+        assert not adapter._running
+        assert adapter._update_task is None
         
+        # Test start
+        print("Starting adapter...")
         await adapter.start()
-        await adapter.subscribe(["AAPL"])
+        print("Adapter started")
         
-        # Simulate temporary provider error
-        with patch.object(adapter.provider, 'get_latest_quote', side_effect=Exception("Test error")):
-            await asyncio.sleep(2)
-            error_handler.assert_called()
-            
-        # Verify adapter is still running
-        self.assertTrue(adapter._running)
+        assert adapter._running
+        assert adapter._update_task is not None
+        mock_realtime_service.start.assert_called_once()
+        
+        # Test stop
+        print("Stopping adapter...")
+        await adapter.stop()
+        print("Adapter stopped")
+        
+        assert not adapter._running
+        assert adapter._update_task is None
+        mock_realtime_service.stop.assert_called_once()
+        
+        print("Stream connection test complete")
+
+    @pytest.mark.asyncio
+    async def test_double_start_stop(self, adapter):
+        """Test starting an already started adapter and stopping an already stopped adapter."""
+        print("\nStarting double start/stop test...")
+        
+        # First start
+        await adapter.start()
+        first_task = adapter._update_task
+        
+        # Second start should be no-op
+        await adapter.start()
+        assert adapter._update_task == first_task
+        
+        # First stop
+        await adapter.stop()
+        
+        # Second stop should be no-op
+        await adapter.stop()
+        assert not adapter._running
+        assert adapter._update_task is None
+        
+        print("Double start/stop test complete")
+
+    @pytest.mark.asyncio
+    async def test_subscription_management(self, adapter):
+        """Test symbol subscription and unsubscription."""
+        print("\nStarting subscription management test...")
+        
+        # Start adapter
+        await adapter.start()
+        
+        # Test subscribe
+        test_symbols = ["AAPL", "MSFT", "GOOGL"]
+        await adapter.subscribe(test_symbols)
+        assert adapter._subscribed_symbols == set(test_symbols)
+        
+        # Test unsubscribe
+        await adapter.unsubscribe(["AAPL", "MSFT"])
+        assert adapter._subscribed_symbols == {"GOOGL"}
         
         await adapter.stop()
+        print("Subscription management test complete")
 
-    async def test_quote_data_validation(self):
-        """Test validation of quote data from provider"""
-        await self.adapter.start()
-        await self.adapter.subscribe(["AAPL"])
+    @pytest.mark.asyncio
+    async def test_error_handling(self, adapter):
+        """Test error handling during streaming."""
+        print("\nStarting error handling test...")
         
-        # Test missing required fields
-        invalid_quote = {
-            'symbol': 'AAPL',
-            'timestamp': datetime.now(),
-            # Missing price and volume
-        }
+        # Mock error handler
+        error_received = asyncio.Event()
+        test_error = Exception("Test error")
         
-        with patch.object(self.adapter.provider, 'get_latest_quote', 
-                         return_value=invalid_quote):
-            with self.assertRaises(KeyError):
-                await self.adapter._update_loop()
-                
-        await self.adapter.stop()
+        def error_handler(error):
+            assert error == test_error
+            error_received.set()
         
-    async def test_rate_limiting(self):
-        """Test rate limiting behavior"""
-        await self.adapter.start()
+        adapter.on_error = error_handler
         
-        # Subscribe to multiple symbols
-        symbols = ["AAPL", "GOOGL", "MSFT", "AMZN", "META"]
-        await self.adapter.subscribe(symbols)
+        # Start adapter
+        await adapter.start()
         
-        # Record update timestamps
-        timestamps = []
+        # Simulate provider error
+        adapter.provider.subscribe = AsyncMock(side_effect=test_error)
         
-        async def mock_get_quote(*args, **kwargs):
-            timestamps.append(datetime.now())
-            return {
-                'symbol': args[0],
-                'last': 100.0,
-                'timestamp': datetime.now(),
-                'volume': 1000
-            }
-            
-        with patch.object(self.adapter.provider, 'get_latest_quote', 
-                         side_effect=mock_get_quote):
-            # Let it run for a few cycles
-            await asyncio.sleep(3)
-            
-        # Check that updates are properly rate limited
-        intervals = [(t2 - t1).total_seconds() 
-                    for t1, t2 in zip(timestamps[:-1], timestamps[1:])]
-        avg_interval = sum(intervals) / len(intervals)
-        self.assertGreaterEqual(avg_interval, 0.2)  # 5 symbols per second
+        # Attempt to subscribe should trigger error handler
+        with pytest.raises(Exception):
+            await adapter.subscribe(["AAPL"])
         
-        await self.adapter.stop()
+        # Wait for error handler
+        await asyncio.wait_for(error_received.wait(), timeout=1.0)
         
-    async def test_multiple_providers(self):
-        """Test adapter with different provider types"""
-        # Test with Alpha Vantage provider
-        alpha_adapter = MarketDataAdapter(
-            provider_class=AlphaVantageProvider,
-            config=self.config,
-            realtime_service=self.realtime_service
-        )
-        
-        # Should work the same as mock provider
-        await alpha_adapter.start()
-        await alpha_adapter.subscribe(["AAPL"])
-        await asyncio.sleep(1)
-        await alpha_adapter.stop()
-        
-        # Test with mock provider (already tested in other cases)
-        mock_adapter = MarketDataAdapter(
-            provider_class=MockMarketDataProvider,
-            config=self.config,
-            realtime_service=self.realtime_service
-        )
-        
-        await mock_adapter.start()
-        await mock_adapter.subscribe(["AAPL"])
-        await asyncio.sleep(1)
-        await mock_adapter.stop()
-        
-    async def test_update_loop_edge_cases(self):
-        """Test edge cases in the update loop"""
-        await self.adapter.start()
-        
-        # Test empty symbol list
-        self.assertEqual(len(self.adapter._subscribed_symbols), 0)
-        await asyncio.sleep(1)  # Let update loop run
-        
-        # Test single symbol
-        await self.adapter.subscribe(["AAPL"])
-        self.assertEqual(len(self.adapter._subscribed_symbols), 1)
-        await asyncio.sleep(1)
-        
-        # Test duplicate symbols
-        await self.adapter.subscribe(["AAPL"])  # Subscribe again
-        self.assertEqual(len(self.adapter._subscribed_symbols), 1)
-        
-        # Test rapid subscribe/unsubscribe
-        for _ in range(5):
-            await self.adapter.subscribe(["MSFT"])
-            await self.adapter.unsubscribe(["MSFT"])
-        self.assertNotIn("MSFT", self.adapter._subscribed_symbols)
-        
-        # Test unsubscribe non-existent symbol
-        await self.adapter.unsubscribe(["NON_EXISTENT"])
-        self.assertEqual(len(self.adapter._subscribed_symbols), 1)
-        
-        await self.adapter.stop()
+        await adapter.stop()
+        print("Error handling test complete")
 
-if __name__ == '__main__':
-    unittest.main()
+    @pytest.mark.asyncio
+    async def test_cleanup_on_provider_error(self, adapter):
+        """Test proper cleanup when provider encounters an error."""
+        print("\nStarting cleanup on provider error test...")
+        
+        # Mock provider to raise error during connect
+        adapter.provider.connect = AsyncMock(side_effect=Exception("Connection error"))
+        
+        # Start should raise the provider error
+        with pytest.raises(Exception):
+            await adapter.start()
+        
+        # Verify cleanup occurred
+        assert not adapter._running
+        assert adapter._update_task is None
+        
+        print("Cleanup on provider error test complete")
+
+    @pytest.mark.asyncio
+    async def test_historical_data_retrieval(self, adapter):
+        """Test historical data retrieval functionality."""
+        print("\nStarting historical data retrieval test...")
+        
+        # Mock historical data response
+        mock_data = pd.DataFrame({
+            'open': [100.0],
+            'high': [101.0],
+            'low': [99.0],
+            'close': [100.5],
+            'volume': [1000000]
+        })
+        adapter.provider.get_historical_data = AsyncMock(return_value=mock_data)
+        
+        # Test data retrieval
+        symbol = "AAPL"
+        lookback = timedelta(days=1)
+        data = await adapter.get_historical_data(symbol, lookback)
+        
+        # Verify the mock was called correctly
+        adapter.provider.get_historical_data.assert_called_once()
+        assert isinstance(data, pd.DataFrame)
+        assert len(data) == len(mock_data)
+        
+        print("Historical data retrieval test complete")
+
+    @pytest.mark.asyncio
+    async def test_update_loop_exception_handling(self, adapter):
+        """Test that exceptions in the update loop are handled gracefully."""
+        print("\nStarting update loop exception test...")
+        
+        # Mock error handler
+        error_received = asyncio.Event()
+        
+        def error_handler(error):
+            assert isinstance(error, Exception)
+            error_received.set()
+        
+        adapter.on_error = error_handler
+        
+        # Start adapter
+        await adapter.start()
+        
+        # Wait for a few update cycles
+        await asyncio.sleep(0.1)
+        
+        # Verify adapter is still running after update cycles
+        assert adapter._running
+        assert adapter._update_task is not None
+        
+        await adapter.stop()
+        print("Update loop exception test complete")

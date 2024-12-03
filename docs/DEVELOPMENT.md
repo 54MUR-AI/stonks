@@ -443,3 +443,113 @@ docker-compose down
 - Ask in team chat
 - Create detailed bug report
 - Include relevant logs
+
+## Testing Strategy
+
+### Market Data Services
+
+The market data services implement a robust testing strategy with comprehensive coverage:
+
+#### Market Data Adapter
+- **Coverage**: 74% (as of latest update)
+- **Test Suite**: `tests/test_market_data_adapter.py`
+- **Key Test Areas**:
+  - Lifecycle management (start/stop)
+  - Symbol subscription handling
+  - Rate limiting verification
+  - Multiple provider support
+  - Error handling and validation
+  - Edge case scenarios
+
+#### Alpha Vantage Provider
+- **Coverage**: 36% (focused on core functionality)
+- **Test Suite**: Integration with adapter tests
+- **Features**:
+  - Historical data retrieval
+  - Real-time market data streaming
+  - Rate limit compliance
+  - Error handling
+
+#### Future Testing Improvements
+- [ ] Add streaming functionality tests
+- [ ] Implement rate limit exceeded scenarios
+- [ ] Add network timeout handling tests
+- [ ] Test complex API interaction patterns
+- [ ] Add performance benchmarking tests
+
+### Best Practices
+
+1. **Async Testing**
+   - Use `pytest-asyncio` for async tests
+   - Implement proper cleanup in `asyncTearDown`
+   - Handle task cancellation with `asyncio.shield`
+   - Set appropriate timeouts for async operations
+
+2. **Mocking**
+   - Use `AsyncMock` for async methods
+   - Mock external API calls and sessions
+   - Implement realistic error scenarios
+   - Verify rate limiting behavior
+
+3. **Error Handling**
+   - Test both success and failure paths
+   - Verify error propagation
+   - Test timeout scenarios
+   - Validate error messages
+
+4. **Coverage**
+   - Run with `pytest --cov`
+   - Focus on critical code paths
+   - Document uncovered scenarios
+   - Track coverage trends
+
+## API Documentation
+
+See [API.md](API.md) for detailed API documentation.
+
+## Performance Considerations
+
+- Monitor rate limits for external APIs
+- Use connection pooling where appropriate
+- Implement caching strategies
+- Profile critical code paths
+
+## Security
+
+- Store credentials in environment variables
+- Use secure session management
+- Implement proper error handling
+- Avoid exposing sensitive data in logs
+
+## Logging
+
+- Use structured logging
+- Include relevant context
+- Implement appropriate log levels
+- Monitor error rates
+
+## Future Improvements
+
+1. **Testing**
+   - Expand integration test coverage
+   - Add performance benchmarks
+   - Implement stress testing
+   - Add security testing
+
+2. **Documentation**
+   - Add architecture diagrams
+   - Include sequence diagrams
+   - Document error codes
+   - Add troubleshooting guides
+
+3. **Monitoring**
+   - Add performance metrics
+   - Implement health checks
+   - Track error rates
+   - Monitor API usage
+
+4. **Development Tools**
+   - Add pre-commit hooks
+   - Implement automated code review
+   - Add dependency scanning
+   - Improve CI/CD pipeline

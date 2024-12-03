@@ -317,3 +317,70 @@ class TestAlphaVantageProvider:
         assert provider._stop_streaming
         assert task.done()  # Check the stored task reference
         assert not provider._subscribed_symbols
+
+    async def test_rate_limit_handling(self, provider, mock_session):
+        """Test rate limit handling and backoff"""
+        # Mock rate limit error response
+        mock_session.get.return_value.__aenter__.return_value.raise_for_status.side_effect = [
+            aiohttp.ClientResponseError(
+                request_info=AsyncMock(),
+                history=(),
+                status=429
+            ),
+            None  # Second request succeeds
+        ]
+        
+        mock_response = {
+            "Global Quote": {
+                "01. symbol": "AAPL",
+                "05. price": "150.0"
+            }
+        }
+        mock_session.get.return_value.__aenter__.return_value.json.return_value = mock_response
+
+        # First request should fail with rate limit
+        with pytest.raises(Exception):
+            await provider.get_latest_quote("AAPL")
+
+        # Second request should succeed after backoff
+        quote = await provider.get_latest_quote("AAPL")
+        assert quote is not None
+        assert quote["symbol"] == "AAPL"
+
+    async def test_empty_response_handling(self, provider, mock_session):
+        """Test handling of empty API responses"""
+        mock_response = {
+            "Time Series (Daily)": {}  # Empty data
+        }
+        mock_session.get.return_value.__aenter__.return_value.json.return_value = mock_response
+
+        df = await provider.get_historical_data(
+            symbol="AAPL",
+            start_date=datetime(2024, 1, 1),
+            interval="1d"
+        )
+        
+        assert df.empty
+        assert isinstance(df, pd.DataFrame)
+
+    async def test_malformed_data_handling(self, provider, mock_session):
+        """Test handling of malformed API responses"""
+        mock_response = {
+            "Time Series (Daily)": {
+                "2024-01-02": {
+                    "1. open": "invalid",  # Invalid numeric data
+                    "2. high": "101.0",
+                    "3. low": "99.0",
+                    "4. close": None,  # Missing data
+                    "5. volume": "1000000"
+                }
+            }
+        }
+        mock_session.get.return_value.__aenter__.return_value.json.return_value = mock_response
+
+        with pytest.raises(ValueError):
+            await provider.get_historical_data(
+                symbol="AAPL",
+                start_date=datetime(2024, 1, 1),
+                interval="1d"
+            )
