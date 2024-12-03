@@ -333,7 +333,15 @@ class TestAlphaVantageProvider:
         mock_response = {
             "Global Quote": {
                 "01. symbol": "AAPL",
-                "05. price": "150.0"
+                "02. open": "100.0",
+                "03. high": "101.0",
+                "04. low": "99.0",
+                "05. price": "150.0",
+                "06. volume": "1000000",
+                "07. latest trading day": "2024-01-02",
+                "08. previous close": "99.5",
+                "09. change": "1.0",
+                "10. change percent": "1.0%"
             }
         }
         mock_session.get.return_value.__aenter__.return_value.json.return_value = mock_response
@@ -346,6 +354,8 @@ class TestAlphaVantageProvider:
         quote = await provider.get_latest_quote("AAPL")
         assert quote is not None
         assert quote["symbol"] == "AAPL"
+        assert quote["price"] == 150.0
+        assert quote["volume"] == 1000000
 
     async def test_empty_response_handling(self, provider, mock_session):
         """Test handling of empty API responses"""
