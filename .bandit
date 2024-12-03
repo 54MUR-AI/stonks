@@ -1,0 +1,19 @@
+[bandit]
+exclude_dirs = tests,docs,build,dist
+skips = B101,B104,B105,B110
+targets = backend,scripts
+
+[bandit.assert_used]
+skips = B101
+
+[bandit.try_except_pass]
+skips = B110
+
+[bandit.blacklist_imports]
+bad_import_sets = 
+    pickle,
+    subprocess,
+    sys,
+    os.system,
+    os.popen,
+    os.spawn

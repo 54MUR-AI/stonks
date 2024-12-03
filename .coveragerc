@@ -1,0 +1,23 @@
+[run]
+source = backend
+omit =
+    */tests/*
+    */migrations/*
+    */settings/*
+    */wsgi.py
+    */asgi.py
+    */__init__.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+    raise ImportError
+    except ImportError:
+    if TYPE_CHECKING:
+
+[html]
+directory = coverage_html

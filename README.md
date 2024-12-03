@@ -1,101 +1,151 @@
-# Stonks - Advanced Financial Market Analysis Platform
+# Stonks: Advanced Financial Machine Learning Platform
 
 <p align="center">
   <img src="logo.png" alt="STONKS" width="400"/>
 </p>
 
-STONKS (Smart Trading Options for Novices and Knowledgeable Speculators) is a comprehensive web application for real-time market analysis, portfolio management, and AI-powered investment insights.
+## Overview
+Stonks is a comprehensive machine learning infrastructure for advanced financial data analysis and predictive trading strategies. The platform leverages state-of-the-art deep learning models, real-time market data processing, and production-grade deployment infrastructure.
 
-## Key Features
+## Features
+- 🧠 Advanced ML Models
+  - LSTM, Transformer, WaveNet architectures
+  - Graph Neural Networks (GNN)
+  - Custom attention mechanisms
+  - Transfer learning capabilities
 
-### Market Analysis
-- Real-time market data with resilient provider switching:
-  - Automatic failover to backup providers
-  - Health-based provider selection
-  - Performance tracking and monitoring
-  - Exponential backoff with jitter
-- Real-time market data visualization for stocks, crypto, and other securities
-- Interactive charts with advanced technical indicators:
-  - Simple Moving Average (SMA)
-  - Exponential Moving Average (EMA)
-  - Bollinger Bands (BB)
-  - Relative Strength Index (RSI)
-  - MACD (Moving Average Convergence Divergence)
-- Multi-timeframe analysis (1D, 1W, 1M, 3M, 6M, 1Y, ALL)
-- AI-powered market insights and predictions
-- Deep learning-based price predictions with confidence intervals
-- Market regime detection and analysis
-- Support and resistance level calculation
-- Technical signal generation
-- Fundamental analysis integration
-- Market sentiment analysis
-- Benchmark comparisons with major indices (SPY, QQQ, DIA, IWM)
+- 📊 Market Analysis
+  - Real-time data processing
+  - Technical indicators
+  - Signal generation
+  - Feature engineering pipeline
 
-### Portfolio Management
-- Portfolio tracking and performance metrics
-- Advanced Portfolio Optimization:
-  - Mean-Variance Optimization
-  - Risk Parity Optimization
-  - Black-Litterman Optimization
-  - Hierarchical Risk Parity
-- Automated portfolio rebalancing
-- Automated trading system:
-  - Configurable trading parameters
-  - Real-time portfolio monitoring
-  - Stop loss and take profit management
-  - Anomaly-based trading signals
-  - Risk-aware execution
-  - Liquidity analysis
-- Comprehensive Risk Management:
-  - Real-time risk alerts via WebSocket
-  - Volatility monitoring
-  - Drawdown tracking
-  - VaR breach detection
-  - Correlation analysis
-  - Concentration risk monitoring
-  - Market regime analysis
-- Portfolio stress testing
-- Maximum drawdown analysis
-- Real-time portfolio value updates via WebSocket
-- Position-level volatility tracking
-- Customizable technical indicator overlays
-- Benchmark performance comparison
+- 🚀 Production Infrastructure
+  - Containerized deployment
+  - Auto-scaling capabilities
+  - Health monitoring
+  - A/B testing framework
 
-### Social Features
-- Portfolio sharing with granular permissions
-- User following system
-- Portfolio comments and discussions
-- Public/private portfolio visibility
+- 🔒 Security Features
+  - Automated security scanning
+  - Access control
+  - Secure model registry
+  - Input validation
 
-### Notifications & Alerts
-- Real-time risk alerts with severity levels (low, medium, high, critical)
-- Portfolio performance notifications
-- Market regime change alerts
-- Risk threshold breach notifications
-- Daily portfolio summaries via email
-- Activity feed with social interactions
-- Customizable notification preferences
+## Prerequisites
+- Python 3.13.0
+- Docker & Docker Compose
+- AWS CLI
+- Terraform >= 1.0.0
 
-### Alert Analytics
-- Pattern recognition
-- Root cause probability analysis
-- Machine learning-based anomaly detection
-- Predictive alerting
-- Analytics dashboard
+## Quick Start
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/stonks.git
+cd stonks
+```
 
-### Incident Management
-- Multi-level escalation (L1-Emergency)
-- Automated response actions
-- Configurable escalation policies
-- Time-based auto-escalation
-- Multi-channel notifications
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+pre-commit install
+```
 
-### Notification System
-- Multi-channel support (Email, Slack, SMS)
-- Configurable notification rules
-- Provider-specific settings
-- Severity-based routing
-- Notification tracking
+3. Set up environment variables:
+```bash
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+4. Run development server:
+```bash
+docker-compose up -d
+```
+
+## Development
+### Code Quality
+We use several tools to maintain code quality:
+- Black for code formatting
+- isort for import sorting
+- MyPy for type checking
+- Bandit for security scanning
+- Pre-commit hooks for automated checks
+
+### Testing
+Run tests with:
+```bash
+pytest
+```
+
+View coverage report:
+```bash
+pytest --cov=backend --cov-report=html
+```
+
+## Deployment
+### Infrastructure
+We use Terraform for infrastructure management:
+```bash
+cd infrastructure
+terraform init
+terraform plan -var="environment=staging"
+terraform apply -var="environment=staging"
+```
+
+### CI/CD Pipeline
+Our GitHub Actions pipeline handles:
+1. Automated testing
+2. Security scanning
+3. Docker image building
+4. Staged deployments
+5. Monitoring alerts
+
+### Monitoring
+- Prometheus for metrics collection
+- Grafana for visualization
+- Custom dashboards for:
+  - Model performance
+  - System health
+  - Request metrics
+  - Resource utilization
+
+## Architecture
+### Components
+1. Model Training Infrastructure
+   - GPU optimization
+   - Distributed training
+   - Model versioning
+
+2. Serving Infrastructure
+   - RESTful API
+   - Real-time predictions
+   - Load balancing
+   - Auto-scaling
+
+3. Monitoring Stack
+   - Health checks
+   - Performance metrics
+   - Alert system
+   - Logging
+
+## Contributing
+1. Fork the repository
+2. Create feature branch
+3. Commit changes
+4. Push to branch
+5. Create Pull Request
+
+## Security
+Report security vulnerabilities to security@yourdomain.com
+
+## License
+This project is licensed under the MIT License - see LICENSE file for details.
+
+## Support
+For support, email support@yourdomain.com
+
+## Roadmap
+See ROADMAP.md for future development plans.
 
 ## Market Data Providers 
 
@@ -179,7 +229,7 @@ stats = await provider.get_symbol_stats("AAPL")
 ## Tech Stack
 
 ### Backend
-- Language: Python 3.11
+- Language: Python 3.13.0
 - Framework: FastAPI
 - Database: SQLAlchemy with SQLite
 - Authentication: JWT-based with python-jose
@@ -203,6 +253,14 @@ stats = await provider.get_symbol_stats("AAPL")
 - Charts: TradingView Lightweight Charts
 - Technical Analysis: technicalindicators library
 
+### Infrastructure
+- Containerization: Docker & Docker Compose
+- CI/CD: GitHub Actions
+- Infrastructure as Code: Terraform
+- Cloud Provider: AWS (ECS Fargate)
+- Monitoring: Prometheus & Grafana
+- Logging: CloudWatch
+
 ### Data Sources & APIs
 - Yahoo Finance (yfinance)
 - Market data providers
@@ -211,8 +269,9 @@ stats = await provider.get_symbol_stats("AAPL")
 ### DevOps & CI/CD
 - GitHub Actions for automated testing and deployment
 - Docker containerization
-- Code quality tools (flake8, black, isort)
+- Code quality tools (black, isort, mypy)
 - Security scanning (bandit, safety)
+- Pre-commit hooks
 
 ## Setup & Installation
 
@@ -227,6 +286,7 @@ cd stonks
 python -m venv venv
 source venv/bin/activate  # On Windows: .\venv\Scripts\activate
 pip install -r requirements.txt
+pre-commit install
 ```
 
 3. Install Node.js dependencies:
@@ -236,15 +296,24 @@ npm install
 ```
 
 4. Set up environment variables:
-Create a `.env` file in the `backend` directory:
+Create a `.env` file in the root directory:
 ```env
+# Database
 DATABASE_URL=sqlite:///./stonks.db
+# Security
 SECRET_KEY=your_secret_key
 ACCESS_TOKEN_EXPIRE_MINUTES=30
+# Email
 MAIL_USERNAME=your_email
 MAIL_PASSWORD=your_password
 MAIL_SERVER=smtp.gmail.com
 MAIL_PORT=587
+# AWS (for production)
+AWS_ACCESS_KEY_ID=your_aws_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret
+AWS_REGION=us-west-2
+# Monitoring
+PROMETHEUS_PUSHGATEWAY=http://localhost:9091
 ```
 
 5. Initialize the database:
@@ -266,33 +335,47 @@ cd frontend
 npm start
 ```
 
-## Environment Configuration
+7. (Optional) Run with Docker:
+```bash
+docker-compose up -d
+```
 
-The application uses environment variables for configuration. To get started:
+## Deployment
 
-1. Copy `.env.example` to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
+### Local Development
+```bash
+docker-compose up -d
+```
 
-2. Update the `.env` file with your configuration:
-   - `STONKS_HOST`: Server host (default: 127.0.0.1)
-   - `STONKS_PORT`: Server port (default: 8000)
-   - `STONKS_ENV`: Environment (development/production)
-   - `SECRET_KEY`: JWT secret key (change this in production!)
-   - `DATABASE_URL`: Database connection string
-   - API keys for external services
+### Production Deployment
+1. Configure AWS credentials:
+```bash
+aws configure
+```
 
-3. Security Notes:
-   - Never commit `.env` file to version control
-   - In production, use a secure secret key
-   - When deploying, ensure proper network security is configured
-   - Default configuration binds to localhost for security
+2. Deploy infrastructure:
+```bash
+cd infrastructure
+terraform init
+terraform plan -var="environment=production"
+terraform apply -var="environment=production"
+```
+
+3. Push to main branch to trigger deployment:
+```bash
+git push origin main
+```
+
+## API Documentation
+
+The API documentation is available at `/docs` or `/redoc` when running the backend server.
 
 ## Project Structure
 
 ```
 stonks/
+├── .github/
+│   └── workflows/          # GitHub Actions workflows
 ├── backend/
 │   ├── models/            # Database models
 │   ├── routers/          # API route handlers
@@ -306,61 +389,9 @@ stonks/
 │   │   ├── services/   # API clients
 │   │   └── utils/      # Helper functions
 │   └── public/         # Static assets
+├── infrastructure/      # Terraform configurations
+├── monitoring/         # Prometheus & Grafana configs
 └── docs/              # Documentation
-```
-
-## API Documentation
-
-The API documentation is available at `/docs` or `/redoc` when running the backend server.
-
-## API Endpoints
-
-### Portfolio Metrics
-```
-GET /api/portfolios/{portfolio_id}/metrics
-
-Query Parameters:
-- time_range: Time period for analysis (1D|1W|1M|3M|6M|1Y|ALL)
-- indicators: Technical indicators to include (SMA|EMA|BB|RSI|MACD)
-- benchmark: Benchmark index for comparison (SPY|QQQ|DIA|IWM)
-
-Response includes:
-- Current portfolio value and changes
-- Historical value data
-- Risk metrics (volatility, Sharpe ratio)
-- Position-level metrics
-- Technical indicators
-- Benchmark comparison data
-```
-
-### Portfolio Management & Risk
-```
-POST /api/portfolio/{portfolio_id}/optimize
-- Optimize portfolio allocation using various strategies
-- Supports mean-variance, risk parity, Black-Litterman, and hierarchical optimization
-- Customizable constraints and targets
-
-WebSocket /ws/risk-alerts/{portfolio_id}
-- Real-time risk alerts for portfolio monitoring
-- Supports multiple alert types and severity levels
-
-GET /api/portfolio/{portfolio_id}/risk-alerts/history
-- Historical risk alerts with filtering capabilities
-- Filter by date range, severity, and alert type
-```
-
-## Testing
-
-Run backend tests:
-```bash
-cd backend
-pytest
-```
-
-Run frontend tests:
-```bash
-cd frontend
-npm test
 ```
 
 ## Contributing
@@ -379,6 +410,9 @@ npm test
 - Environment variable management
 - Input validation
 - Permission-based access control
+- Automated security scanning
+- Infrastructure security groups
+- AWS IAM roles and policies
 
 ## License
 
@@ -389,96 +423,6 @@ npm test
 - TradingView for the Lightweight Charts library
 - FastAPI for the excellent framework
 - Material-UI for the component library
-
-## Next Steps
-
-### Frontend Development
-- Implement portfolio visualization dashboard
-- Add interactive charts for portfolio analysis
-- Create user profile pages
-
-### Backend Enhancements
-- Add real-time market data streaming
-- Implement portfolio rebalancing suggestions
-- Add machine learning-based market insights
-
-### Performance Optimization
-- Implement caching for market data
-- Optimize database queries
-- Add background task processing
-
-### Security Enhancements
-- Add 2FA support
-- Implement rate limiting
-- Enhanced input validation
-
-### Documentation
-- Complete API documentation
-- Add user guides
-- Create developer documentation
-
-## Advanced Features
-
-### Portfolio Optimization
-The platform offers multiple portfolio optimization strategies:
-- Mean-Variance Optimization: Maximize returns for given risk level
-- Risk Parity: Equal risk contribution from all assets
-- Black-Litterman: Incorporate market views into optimization
-- Hierarchical Risk Parity: Tree-based portfolio optimization
-
-### Risk Management System
-Real-time risk monitoring and alerts:
-- Volatility tracking and threshold alerts
-- Drawdown monitoring with configurable limits
-- Value at Risk (VaR) breach detection
-- Correlation analysis and diversification alerts
-- Position concentration monitoring
-- Market regime change detection
-- Stress testing scenarios
-
-## Testing Improvements
-
-The testing suite has been significantly improved with:
-
-- Enhanced test coverage for market data services
-- Robust async operation handling
-- Comprehensive error management
-- Multiple provider support
-
-Current test coverage:
-- Market Data Adapter: 74%
-- Alpha Vantage Provider: 36%
-- Base Provider Interface: 81%
-- Mock Provider: 66%
-
-## Project Status
-
-The project is currently in the development phase, with a focus on:
-
-- Implementing real-time market data streaming
-- Enhancing portfolio optimization and risk management features
-- Improving performance and security
-
-## Roadmap
-
-See [ROADMAP.md](ROADMAP.md) for planned features and improvements.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- [Alpha Vantage](https://www.alphavantage.co/) for market data
-- [FastAPI](https://fastapi.tiangolo.com/) for the backend framework
-- [React](https://reactjs.org/) for the frontend framework
-
-## Support
-
-For support:
-1. Check the [documentation](docs/)
-2. Create an issue
-3. Contact the development team
 
 ## Screenshots
 

@@ -1,202 +1,202 @@
 {
   "AAPL": {
-    "price_prediction": 156.5062940802238,
+    "price_prediction": 350.3470843762424,
     "confidence_interval": [
-      149.22777047351187,
-      163.78481768693572
+      334.6505373108778,
+      366.0436314416069
     ],
-    "trend_probability": 0.7511648257979187,
-    "volatility_forecast": 0.2848589133310977,
+    "trend_probability": 0.5562033199242398,
+    "volatility_forecast": 0.1726127186861379,
     "regime_probability": {
-      "Bull": 0.41105022065925084,
-      "Neutral": 0.2663062259664819,
-      "Bear": 0.19040675826861603
-    },
-    "technical_signals": {
-      "RSI": "Neutral",
-      "MACD": "Bullish",
-      "Stochastic": "Oversold"
-    },
-    "market_sentiment": 0.9018374749500324
-  },
-  "MSFT": {
-    "price_prediction": 224.16835963002526,
-    "confidence_interval": [
-      211.82920385056875,
-      236.50751540948178
-    ],
-    "trend_probability": 0.4718977293511253,
-    "volatility_forecast": 0.16721887990539339,
-    "regime_probability": {
-      "Bull": 0.42986065034603954,
-      "Neutral": 0.2199787835322082,
-      "Bear": 0.2316473012743051
+      "Bull": 0.41061283989426134,
+      "Neutral": 0.3651657983661124,
+      "Bear": 0.27953663012660024
     },
     "technical_signals": {
       "RSI": "Oversold",
-      "MACD": "Bearish",
-      "Stochastic": "Neutral"
-    },
-    "market_sentiment": 0.11263547195926771
-  },
-  "GOOGL": {
-    "price_prediction": 471.3079048157261,
-    "confidence_interval": [
-      447.0742517640841,
-      495.54155786736806
-    ],
-    "trend_probability": 0.5983545041764988,
-    "volatility_forecast": 0.1535550025090432,
-    "regime_probability": {
-      "Bull": 0.4559730132668731,
-      "Neutral": 0.2325115991920574,
-      "Bear": 0.21039966063525717
-    },
-    "technical_signals": {
-      "RSI": "Neutral",
-      "MACD": "Bullish",
-      "Stochastic": "Neutral"
-    },
-    "market_sentiment": 0.6459536705410369
-  },
-  "AMZN": {
-    "price_prediction": 396.04780460739863,
-    "confidence_interval": [
-      376.6190256597075,
-      415.4765835550898
-    ],
-    "trend_probability": 0.6003408462137433,
-    "volatility_forecast": 0.218410543801697,
-    "regime_probability": {
-      "Bull": 0.4080312115513953,
-      "Neutral": 0.3547303218657445,
-      "Bear": 0.26638908891693663
-    },
-    "technical_signals": {
-      "RSI": "Overbought",
-      "MACD": "Bearish",
-      "Stochastic": "Oversold"
-    },
-    "market_sentiment": 0.5761921846108955
-  },
-  "NVDA": {
-    "price_prediction": 200.197391778384,
-    "confidence_interval": [
-      191.25846974665606,
-      209.13631381011194
-    ],
-    "trend_probability": 0.4275204548016798,
-    "volatility_forecast": 0.34168888405898346,
-    "regime_probability": {
-      "Bull": 0.4521245645381457,
-      "Neutral": 0.32756178082150367,
-      "Bear": 0.2597140074901819
-    },
-    "technical_signals": {
-      "RSI": "Oversold",
-      "MACD": "Neutral",
-      "Stochastic": "Oversold"
-    },
-    "market_sentiment": -0.4435927026589248
-  },
-  "META": {
-    "price_prediction": 50.367919113526895,
-    "confidence_interval": [
-      47.6589348599393,
-      53.07690336711449
-    ],
-    "trend_probability": 0.44974980221582883,
-    "volatility_forecast": 0.33337090704426103,
-    "regime_probability": {
-      "Bull": 0.3050253001249339,
-      "Neutral": 0.227729836151476,
-      "Bear": 0.10583130164615913
-    },
-    "technical_signals": {
-      "RSI": "Overbought",
-      "MACD": "Bearish",
-      "Stochastic": "Neutral"
-    },
-    "market_sentiment": 0.42543494510100555
-  },
-  "TSLA": {
-    "price_prediction": 363.02409735038043,
-    "confidence_interval": [
-      344.53300146378376,
-      381.51519323697715
-    ],
-    "trend_probability": 0.696858461797702,
-    "volatility_forecast": 0.248467493677499,
-    "regime_probability": {
-      "Bull": 0.3530668818135857,
-      "Neutral": 0.23768225843278049,
-      "Bear": 0.24611208328037745
-    },
-    "technical_signals": {
-      "RSI": "Neutral",
-      "MACD": "Neutral",
-      "Stochastic": "Oversold"
-    },
-    "market_sentiment": -0.6410137938645755
-  },
-  "JPM": {
-    "price_prediction": 250.88127705367125,
-    "confidence_interval": [
-      238.62325348443323,
-      263.13930062290933
-    ],
-    "trend_probability": 0.7554858362491529,
-    "volatility_forecast": 0.28073433051405694,
-    "regime_probability": {
-      "Bull": 0.4185901232623867,
-      "Neutral": 0.3558352198479164,
-      "Bear": 0.2515683560024796
-    },
-    "technical_signals": {
-      "RSI": "Overbought",
       "MACD": "Neutral",
       "Stochastic": "Overbought"
     },
-    "market_sentiment": -0.3032102650625548
+    "market_sentiment": 0.31660326279300266
   },
-  "V": {
-    "price_prediction": 140.9799873575991,
+  "MSFT": {
+    "price_prediction": 378.1735279956253,
     "confidence_interval": [
-      134.46003944645568,
-      147.49993526874255
+      359.3954877967872,
+      396.95156819446333
     ],
-    "trend_probability": 0.7979002893605245,
-    "volatility_forecast": 0.20587321403666534,
+    "trend_probability": 0.7090255339597591,
+    "volatility_forecast": 0.20200334827367247,
     "regime_probability": {
-      "Bull": 0.34124484051494963,
-      "Neutral": 0.21757048957041955,
-      "Bear": 0.19512940565364717
+      "Bull": 0.36232922102266407,
+      "Neutral": 0.35483475738148457,
+      "Bear": 0.14258343511184235
+    },
+    "technical_signals": {
+      "RSI": "Neutral",
+      "MACD": "Bullish",
+      "Stochastic": "Oversold"
+    },
+    "market_sentiment": -0.9412704816133515
+  },
+  "GOOGL": {
+    "price_prediction": 284.3367412927157,
+    "confidence_interval": [
+      271.29864660145955,
+      297.3748359839719
+    ],
+    "trend_probability": 0.6362691691316329,
+    "volatility_forecast": 0.17602820345458114,
+    "regime_probability": {
+      "Bull": 0.48242302842420043,
+      "Neutral": 0.2523616169561112,
+      "Bear": 0.2195445028493378
     },
     "technical_signals": {
       "RSI": "Oversold",
-      "MACD": "Bearish",
+      "MACD": "Bullish",
+      "Stochastic": "Overbought"
+    },
+    "market_sentiment": 0.5276206775209622
+  },
+  "AMZN": {
+    "price_prediction": 175.48982381250852,
+    "confidence_interval": [
+      165.61817618702074,
+      185.3614714379963
+    ],
+    "trend_probability": 0.49761581362259677,
+    "volatility_forecast": 0.24648129490882964,
+    "regime_probability": {
+      "Bull": 0.3779023895834698,
+      "Neutral": 0.2961143401358036,
+      "Bear": 0.2676402546746921
+    },
+    "technical_signals": {
+      "RSI": "Neutral",
+      "MACD": "Neutral",
       "Stochastic": "Neutral"
     },
-    "market_sentiment": -0.039229786420316826
+    "market_sentiment": 0.40296971019547345
   },
-  "PYPL": {
-    "price_prediction": 270.73342846674643,
+  "NVDA": {
+    "price_prediction": 101.07492223784118,
     "confidence_interval": [
-      256.14252821805746,
-      285.32432871543534
+      95.69550025746722,
+      106.45434421821514
     ],
-    "trend_probability": 0.6271875284178067,
-    "volatility_forecast": 0.20693536267850812,
+    "trend_probability": 0.6700392949877707,
+    "volatility_forecast": 0.3245659038094565,
     "regime_probability": {
-      "Bull": 0.2199202608575408,
-      "Neutral": 0.3634643175871749,
-      "Bear": 0.1873857597428633
+      "Bull": 0.41180097287892414,
+      "Neutral": 0.2826221177081101,
+      "Bear": 0.15815276390392868
     },
     "technical_signals": {
       "RSI": "Oversold",
       "MACD": "Bullish",
       "Stochastic": "Oversold"
     },
-    "market_sentiment": 0.3525636752075456
+    "market_sentiment": 0.9031616977347032
+  },
+  "META": {
+    "price_prediction": 270.1149947685847,
+    "confidence_interval": [
+      255.462712579501,
+      284.76727695766846
+    ],
+    "trend_probability": 0.4452996446060948,
+    "volatility_forecast": 0.21462307583968274,
+    "regime_probability": {
+      "Bull": 0.4307500243497213,
+      "Neutral": 0.39068022547467673,
+      "Bear": 0.2264123774985823
+    },
+    "technical_signals": {
+      "RSI": "Oversold",
+      "MACD": "Bearish",
+      "Stochastic": "Oversold"
+    },
+    "market_sentiment": -0.09145361371039296
+  },
+  "TSLA": {
+    "price_prediction": 91.33022245816564,
+    "confidence_interval": [
+      86.68853299614628,
+      95.97191192018501
+    ],
+    "trend_probability": 0.4688111571451303,
+    "volatility_forecast": 0.20296443731453073,
+    "regime_probability": {
+      "Bull": 0.23173500202894548,
+      "Neutral": 0.20979882558027554,
+      "Bear": 0.26005078383994507
+    },
+    "technical_signals": {
+      "RSI": "Oversold",
+      "MACD": "Bearish",
+      "Stochastic": "Oversold"
+    },
+    "market_sentiment": -0.10450717036131496
+  },
+  "JPM": {
+    "price_prediction": 344.44542546935224,
+    "confidence_interval": [
+      325.5346017162619,
+      363.3562492224426
+    ],
+    "trend_probability": 0.4199429667211952,
+    "volatility_forecast": 0.3229549142766344,
+    "regime_probability": {
+      "Bull": 0.4201560809868369,
+      "Neutral": 0.24279074267112322,
+      "Bear": 0.10681206817798623
+    },
+    "technical_signals": {
+      "RSI": "Oversold",
+      "MACD": "Neutral",
+      "Stochastic": "Neutral"
+    },
+    "market_sentiment": 0.6472938167572226
+  },
+  "V": {
+    "price_prediction": 361.3945593502156,
+    "confidence_interval": [
+      341.91008300300535,
+      380.87903569742593
+    ],
+    "trend_probability": 0.7126445999684131,
+    "volatility_forecast": 0.2066675322701839,
+    "regime_probability": {
+      "Bull": 0.23646028749360598,
+      "Neutral": 0.3627589411330699,
+      "Bear": 0.15143415431411228
+    },
+    "technical_signals": {
+      "RSI": "Overbought",
+      "MACD": "Bearish",
+      "Stochastic": "Oversold"
+    },
+    "market_sentiment": -0.9986787518349884
+  },
+  "PYPL": {
+    "price_prediction": 154.6118134767179,
+    "confidence_interval": [
+      145.73168510049928,
+      163.49194185293655
+    ],
+    "trend_probability": 0.6487009202553681,
+    "volatility_forecast": 0.22298856426000868,
+    "regime_probability": {
+      "Bull": 0.44480906351208993,
+      "Neutral": 0.3510547863959218,
+      "Bear": 0.2994395166228023
+    },
+    "technical_signals": {
+      "RSI": "Neutral",
+      "MACD": "Neutral",
+      "Stochastic": "Neutral"
+    },
+    "market_sentiment": 0.9414087988365669
   }
 }

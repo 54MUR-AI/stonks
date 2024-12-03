@@ -1,0 +1,65 @@
+groups:
+  - name: model_serving_alerts
+    rules:
+      - alert: HighCPUUsage
+        expr: cpu_percent > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: High CPU usage detected
+          description: CPU usage is above 90% for 5 minutes
+
+      - alert: HighMemoryUsage
+        expr: memory_percent > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: High memory usage detected
+          description: Memory usage is above 90% for 5 minutes
+
+      - alert: HighErrorRate
+        expr: error_rate > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: High error rate detected
+          description: Error rate is above 10% for 5 minutes
+
+      - alert: HighLatency
+        expr: average_latency > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: High latency detected
+          description: Average latency is above 1 second for 5 minutes
+
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Service is down
+          description: Model serving service is not responding
+
+      - alert: HighGPUUsage
+        expr: gpu_utilization > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: High GPU usage detected
+          description: GPU utilization is above 90% for 5 minutes
+
+      - alert: DiskSpaceLow
+        expr: disk_usage_percent > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Low disk space
+          description: Disk usage is above 85% for 5 minutes
