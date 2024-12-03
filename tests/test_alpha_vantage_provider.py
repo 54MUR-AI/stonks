@@ -394,3 +394,109 @@ class TestAlphaVantageProvider:
                 start_date=datetime(2024, 1, 1),
                 interval="1d"
             )
+
+    async def test_not_connected_error(self, provider):
+        """Test error when making requests without connecting"""
+        provider.session = None
+        
+        with pytest.raises(RuntimeError, match="Not connected to Alpha Vantage"):
+            await provider.get_latest_quote("AAPL")
+            
+        with pytest.raises(RuntimeError, match="Not connected to Alpha Vantage"):
+            await provider.get_historical_data(
+                symbol="AAPL",
+                start_date=datetime(2024, 1, 1)
+            )
+
+    async def test_invalid_api_key(self, provider, mock_session):
+        """Test handling of invalid API key"""
+        mock_session.get.return_value.__aenter__.return_value.raise_for_status.side_effect = aiohttp.ClientResponseError(
+            request_info=AsyncMock(),
+            history=(),
+            status=401,
+            message="Invalid API key"
+        )
+
+        with pytest.raises(Exception) as exc_info:
+            await provider.get_latest_quote("AAPL")
+        assert "401" in str(exc_info.value)
+
+    async def test_missing_time_series_key(self, provider, mock_session):
+        """Test handling of missing time series key in response"""
+        mock_response = {
+            "Error Message": "Invalid API call"
+        }
+        mock_session.get.return_value.__aenter__.return_value.json.return_value = mock_response
+
+        with pytest.raises(ValueError, match="API Error: Invalid API call"):
+            await provider.get_historical_data(
+                symbol="AAPL",
+                start_date=datetime(2024, 1, 1),
+                interval="1d"
+            )
+
+    async def test_intraday_interval_validation(self, provider):
+        """Test validation of intraday intervals"""
+        valid_intervals = ["1min", "5min", "15min", "30min", "1h"]
+        invalid_intervals = ["2min", "10min", "2h"]
+        
+        # Test valid intervals
+        for interval in valid_intervals:
+            try:
+                await provider.get_historical_data(
+                    symbol="AAPL",
+                    start_date=datetime(2024, 1, 1),
+                    interval=interval
+                )
+            except Exception as e:
+                assert not isinstance(e, ValueError), f"Valid interval {interval} raised ValueError"
+        
+        # Test invalid intervals
+        for interval in invalid_intervals:
+            with pytest.raises(ValueError, match=f"Unsupported interval: {interval}"):
+                await provider.get_historical_data(
+                    symbol="AAPL",
+                    start_date=datetime(2024, 1, 1),
+                    interval=interval
+                )
+
+    async def test_end_date_filtering(self, provider, mock_session):
+        """Test end date filtering in historical data"""
+        mock_response = {
+            "Time Series (Daily)": {
+                "2024-01-02": {
+                    "1. open": "100.0",
+                    "2. high": "101.0",
+                    "3. low": "99.0",
+                    "4. close": "100.5",
+                    "5. volume": "1000000"
+                },
+                "2024-01-03": {
+                    "1. open": "100.5",
+                    "2. high": "102.0",
+                    "3. low": "100.0",
+                    "4. close": "101.5",
+                    "5. volume": "1100000"
+                },
+                "2024-01-04": {
+                    "1. open": "101.5",
+                    "2. high": "103.0",
+                    "3. low": "101.0",
+                    "4. close": "102.5",
+                    "5. volume": "1200000"
+                }
+            }
+        }
+        mock_session.get.return_value.__aenter__.return_value.json.return_value = mock_response
+
+        # Test with end date
+        df = await provider.get_historical_data(
+            symbol="AAPL",
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 3),
+            interval="1d"
+        )
+        
+        assert not df.empty
+        assert len(df) == 2  # Should only include 01/02 and 01/03
+        assert df.iloc[-1]["close"] == 101.5  # Last price should be from 01/03

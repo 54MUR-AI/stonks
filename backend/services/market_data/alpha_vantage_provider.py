@@ -162,8 +162,16 @@ class AlphaVantageProvider(MarketDataProvider):
                 await response.raise_for_status()
                 data = await response.json()
                 
+                # Check for error message
+                if "Error Message" in data:
+                    raise ValueError(f"API Error: {data['Error Message']}")
+                
                 # Extract time series data
-                time_series_key = [k for k in data.keys() if "Time Series" in k][0]
+                time_series_keys = [k for k in data.keys() if "Time Series" in k]
+                if not time_series_keys:
+                    raise ValueError("Invalid response: No time series data found")
+                    
+                time_series_key = time_series_keys[0]
                 df = pd.DataFrame.from_dict(data[time_series_key], orient='index')
                 
                 # Clean up column names
