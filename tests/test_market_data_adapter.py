@@ -15,7 +15,12 @@ from backend.services.market_data import (
     MarketDataAdapter,
     MarketDataConfig,
     MarketDataCredentials,
-    MockProvider
+    MockProvider,
+    MarketDataError,
+    ConnectionError,
+    SubscriptionError,
+    QuoteError,
+    HistoricalDataError
 )
 from backend.services.realtime_data import RealTimeDataService
 
@@ -27,7 +32,11 @@ class TestMarketDataAdapter:
         service = Mock(spec=RealTimeDataService)
         service.start = AsyncMock()
         service.stop = AsyncMock()
+        service.subscribe = AsyncMock()
+        service.unsubscribe = AsyncMock()
         service.is_running = Mock(return_value=True)
+        service.update_market_data = Mock()
+        service._simulate_market_update = AsyncMock()
         return service
 
     @pytest.fixture
@@ -36,7 +45,10 @@ class TestMarketDataAdapter:
             credentials=MarketDataCredentials(api_key='test_key'),
             base_url='http://test.url',
             websocket_url='ws://test.url/ws',
-            request_timeout=30
+            request_timeout=30,
+            rate_limit_max=10,
+            rate_limit_window=1.0,
+            min_request_interval=0.1
         )
 
     @pytest_asyncio.fixture
@@ -53,7 +65,8 @@ class TestMarketDataAdapter:
         adapter.provider.subscribe = AsyncMock()
         adapter.provider.unsubscribe = AsyncMock()
         adapter.provider.get_historical_data = AsyncMock()
-        adapter.provider.get_latest_quote = AsyncMock()
+        adapter.provider.get_quote = AsyncMock(return_value=100.0)
+        adapter.provider.get_latest_quote = AsyncMock(return_value=100.0)
         
         # Set up market data callback
         def on_market_data(data):
@@ -428,3 +441,278 @@ class TestMarketDataAdapter:
         await adapter.stop()
         mock_realtime_service.stop.assert_called_once()
         print("Realtime service integration test complete")
+
+    @pytest.mark.asyncio
+    async def test_quote_retrieval(self, adapter):
+        """Test quote retrieval functionality."""
+        print("\nStarting quote retrieval test...")
+        
+        # Mock quote response
+        mock_quotes = {
+            "AAPL": 150.0,
+            "MSFT": 300.0,
+            "GOOGL": 2800.0
+        }
+        adapter.provider.get_quote = AsyncMock(side_effect=lambda symbol: mock_quotes[symbol])
+        
+        # Start adapter
+        await adapter.start()
+        
+        # Test single quote
+        quote = await adapter.get_quotes(["AAPL"])
+        assert quote == {"AAPL": 150.0}
+        
+        # Test multiple quotes
+        quotes = await adapter.get_quotes(["AAPL", "MSFT", "GOOGL"])
+        assert quotes == mock_quotes
+        
+        await adapter.stop()
+        print("Quote retrieval test complete")
+
+    @pytest.mark.asyncio
+    async def test_quote_error_handling(self, adapter):
+        """Test error handling during quote retrieval."""
+        print("\nStarting quote error handling test...")
+        
+        # Mock quote errors
+        def mock_get_quote(symbol):
+            if symbol == "AAPL":
+                return 150.0
+            elif symbol == "MSFT":
+                raise ConnectionError("Network error")
+            else:
+                raise ValueError("Invalid symbol")
+                
+        adapter.provider.get_quote = AsyncMock(side_effect=mock_get_quote)
+        
+        # Start adapter
+        await adapter.start()
+        
+        # Test mixed success/failure
+        quotes = await adapter.get_quotes(["AAPL", "MSFT", "INVALID"])
+        assert quotes == {"AAPL": 150.0}  # Only successful quote included
+        
+        await adapter.stop()
+        print("Quote error handling test complete")
+
+    @pytest.mark.asyncio
+    async def test_connection_recovery(self, adapter):
+        """Test automatic connection recovery."""
+        print("\nStarting connection recovery test...")
+        
+        # Start adapter
+        await adapter.start()
+        
+        # Subscribe to symbols
+        await adapter.subscribe(["AAPL", "MSFT"])
+        
+        # Simulate connection error
+        adapter.provider.get_quote = AsyncMock(side_effect=ConnectionError("Network error"))
+        
+        # Wait for recovery attempt
+        await asyncio.sleep(0.2)
+        
+        # Verify reconnection was attempted
+        assert adapter.provider.connect.call_count >= 1
+        assert adapter.provider.subscribe.call_count >= 2  # Initial + recovery
+        
+        await adapter.stop()
+        print("Connection recovery test complete")
+
+    @pytest.mark.asyncio
+    async def test_rate_limiting(self, adapter):
+        """Test rate limiting behavior."""
+        print("\nStarting rate limiting test...")
+        
+        # Start adapter
+        await adapter.start()
+        
+        # Configure mock provider with rate limit
+        calls = []
+        async def mock_get_quote(symbol):
+            calls.append(datetime.now())
+            return 100.0
+            
+        adapter.provider.get_quote = AsyncMock(side_effect=mock_get_quote)
+        
+        # Make rapid requests
+        symbols = ["AAPL"] * 5
+        await adapter.get_quotes(symbols)
+        
+        # Verify timing between calls
+        for i in range(1, len(calls)):
+            time_diff = (calls[i] - calls[i-1]).total_seconds()
+            assert time_diff >= 0.1  # At least 100ms between calls
+        
+        await adapter.stop()
+        print("Rate limiting test complete")
+
+    @pytest.mark.asyncio
+    async def test_concurrent_operations(self, adapter):
+        """Test concurrent operations handling."""
+        print("\nStarting concurrent operations test...")
+        
+        # Start adapter
+        await adapter.start()
+        
+        # Prepare concurrent operations
+        operations = [
+            adapter.subscribe(["AAPL"]),
+            adapter.get_quotes(["MSFT"]),
+            adapter.get_historical_data("GOOGL", timedelta(days=1)),
+            adapter.unsubscribe(["AAPL"])
+        ]
+        
+        # Execute operations concurrently
+        results = await asyncio.gather(*operations, return_exceptions=True)
+        
+        # Verify no exceptions occurred
+        for result in results:
+            assert not isinstance(result, Exception)
+        
+        await adapter.stop()
+        print("Concurrent operations test complete")
+
+    @pytest.mark.asyncio
+    async def test_error_context_tracking(self, adapter):
+        """Test error context tracking and retry counting."""
+        print("\nStarting error context tracking test...")
+        
+        # Start adapter
+        await adapter.start()
+        
+        # Mock provider to fail multiple times
+        test_error = ConnectionError("Connection failed")
+        adapter.provider.get_quote = AsyncMock(side_effect=test_error)
+        
+        # Track error contexts
+        contexts_received = []
+        def error_handler(error, context):
+            contexts_received.append(context)
+        adapter.error_callback = error_handler
+        
+        # Attempt operations that will fail
+        test_symbol = "AAPL"
+        for _ in range(3):
+            with pytest.raises(QuoteError):
+                await adapter.get_quotes([test_symbol])
+                
+        # Verify error contexts
+        assert len(contexts_received) == 3
+        assert all(ctx.operation == "get_quote" for ctx in contexts_received)
+        assert all(ctx.symbols == [test_symbol] for ctx in contexts_received)
+        
+        # Verify retry counting
+        context_key = f"get_quote_{test_symbol}"
+        assert adapter._error_contexts[context_key].retry_count == 2
+        
+        await adapter.stop()
+        print("Error context tracking test complete")
+
+    @pytest.mark.asyncio
+    async def test_stale_data_detection(self, adapter):
+        """Test detection and handling of stale market data."""
+        print("\nStarting stale data detection test...")
+        
+        # Start adapter
+        await adapter.start()
+        
+        # Subscribe to test symbol
+        test_symbol = "AAPL"
+        await adapter.subscribe([test_symbol])
+        
+        # Mock successful update
+        quote = 150.0
+        adapter.provider.get_quote = AsyncMock(return_value=quote)
+        await asyncio.sleep(0.2)  # Allow update loop to run
+        
+        # Verify successful update
+        assert test_symbol in adapter._last_successful_updates
+        initial_update = adapter._last_successful_updates[test_symbol]
+        
+        # Mock provider to start failing
+        adapter.provider.get_quote = AsyncMock(side_effect=Exception("Quote failed"))
+        
+        # Track error contexts
+        error_contexts = []
+        def error_handler(error, context):
+            error_contexts.append(context)
+        adapter.error_callback = error_handler
+        
+        # Wait for stale data detection (>5 seconds)
+        await asyncio.sleep(5.1)
+        
+        # Verify stale data was detected
+        assert any("Stale data detected" in ctx.details for ctx in error_contexts)
+        
+        await adapter.stop()
+        print("Stale data detection test complete")
+
+    @pytest.mark.asyncio
+    async def test_connection_retry_backoff(self, adapter):
+        """Test connection retry with exponential backoff."""
+        print("\nStarting connection retry test...")
+        
+        # Mock provider to fail connections
+        connection_attempts = []
+        async def mock_connect():
+            connection_attempts.append(datetime.now())
+            raise ConnectionError("Connection failed")
+        adapter.provider.connect = AsyncMock(side_effect=mock_connect)
+        
+        # Attempt to start adapter (should trigger retries)
+        with pytest.raises(ConnectionError):
+            await adapter.start()
+            
+        # Verify retry attempts
+        assert len(connection_attempts) == adapter.MAX_RETRY_ATTEMPTS
+        
+        # Verify increasing delays between attempts
+        for i in range(1, len(connection_attempts)):
+            delay = (connection_attempts[i] - connection_attempts[i-1]).total_seconds()
+            expected_delay = adapter.RETRY_DELAY * i
+            assert abs(delay - expected_delay) < 0.1  # Allow small timing variance
+            
+        print("Connection retry test complete")
+
+    @pytest.mark.asyncio
+    async def test_error_propagation_hierarchy(self, adapter):
+        """Test error type hierarchy and propagation."""
+        print("\nStarting error propagation test...")
+        
+        # Start adapter
+        await adapter.start()
+        
+        # Test different error types
+        error_types = [
+            (ConnectionError("Connection lost"), "connection"),
+            (SubscriptionError("Invalid symbol"), "subscription"),
+            (QuoteError("Quote unavailable"), "quote"),
+            (HistoricalDataError("No historical data"), "historical"),
+            (MarketDataError("Generic error"), "generic")
+        ]
+        
+        received_errors = []
+        def error_handler(error, context):
+            received_errors.append((type(error), context.operation))
+        adapter.error_callback = error_handler
+        
+        # Trigger each error type
+        for error, operation in error_types:
+            context = ErrorContext(
+                timestamp=datetime.now(),
+                operation=operation,
+                symbols=["AAPL"],
+                details=str(error)
+            )
+            await adapter._handle_error(error, context)
+            
+        # Verify all errors were handled
+        assert len(received_errors) == len(error_types)
+        
+        # Verify error hierarchy
+        for (error_type, _), (received_type, _) in zip(error_types, received_errors):
+            assert isinstance(error_type, received_type)
+            
+        await adapter.stop()
+        print("Error propagation test complete")

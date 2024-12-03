@@ -24,6 +24,9 @@ class MarketDataConfig:
     request_timeout: int = 30
     max_retries: int = 3
     retry_delay: int = 1
+    rate_limit_max: int = 10  # Maximum number of requests per window
+    rate_limit_window: float = 1.0  # Time window in seconds
+    min_request_interval: float = 0.1  # Minimum time between requests
 
 class MarketDataProvider(ABC):
     """Abstract base class for market data providers"""

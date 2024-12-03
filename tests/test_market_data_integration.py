@@ -7,7 +7,7 @@ from typing import List, Dict, Any
 from backend.services.market_data.mock_provider import MockProvider
 from backend.services.market_data.adapter import MarketDataAdapter
 from backend.services.market_data.base import MarketDataConfig, MarketDataCredentials
-from backend.services.realtime_data import RealTimeDataService
+from .mock_realtime_service import MockRealTimeDataService
 
 @pytest.fixture
 def mock_config():
@@ -19,7 +19,7 @@ def mock_config():
 
 @pytest.fixture
 def realtime_service(mock_config):
-    service = RealTimeDataService(
+    service = MockRealTimeDataService(
         websocket_url=mock_config.websocket_url,
         api_key=mock_config.credentials.api_key
     )
@@ -128,7 +128,7 @@ async def test_concurrent_data_requests(market_data_adapter):
     start_date = end_date - timedelta(days=30)
     
     async def get_data(symbol: str) -> pd.DataFrame:
-        return await adapter.get_historical_data(symbol, start_date, end_date)
+        return await adapter.get_historical_data(symbol, timedelta(days=30), interval="1d")
     
     # Execute requests concurrently
     tasks = [get_data(symbol) for symbol in symbols]

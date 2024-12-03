@@ -500,3 +500,95 @@ class TestAlphaVantageProvider:
         assert not df.empty
         assert len(df) == 2  # Should only include 01/02 and 01/03
         assert df.iloc[-1]["close"] == 101.5  # Last price should be from 01/03
+
+    async def test_concurrent_requests(self, provider, mock_session):
+        """Test handling of concurrent API requests"""
+        mock_response = {
+            "Global Quote": {
+                "01. symbol": "AAPL",
+                "02. open": "100.0",
+                "03. high": "101.0",
+                "04. low": "99.0",
+                "05. price": "150.0",
+                "06. volume": "1000000",
+                "07. latest trading day": "2024-01-02",
+                "08. previous close": "99.5",
+                "09. change": "1.0",
+                "10. change percent": "1.0%"
+            }
+        }
+        mock_session.get.return_value.__aenter__.return_value.json.return_value = mock_response
+
+        # Make multiple concurrent requests
+        symbols = ["AAPL", "GOOGL", "MSFT"]
+        tasks = [provider.get_latest_quote(symbol) for symbol in symbols]
+        results = await asyncio.gather(*tasks)
+
+        assert len(results) == 3
+        assert all(result is not None for result in results)
+        assert mock_session.get.call_count == 3
+
+    async def test_network_timeout(self, provider, mock_session):
+        """Test handling of network timeouts"""
+        mock_session.get.return_value.__aenter__.return_value.raise_for_status.side_effect = asyncio.TimeoutError()
+
+        with pytest.raises(asyncio.TimeoutError):
+            await provider.get_latest_quote("AAPL")
+
+        # Verify retry behavior
+        mock_session.get.assert_called_once()
+
+    async def test_websocket_connection(self, provider):
+        """Test websocket connection handling"""
+        # Test connection with invalid websocket URL
+        config = MarketDataConfig(
+            base_url="https://www.alphavantage.co/query",
+            credentials=MarketDataCredentials(api_key="test_key"),
+            websocket_url="wss://invalid.example.com"
+        )
+        websocket_provider = AlphaVantageProvider(config)
+
+        # Should not raise error since Alpha Vantage doesn't use WebSocket
+        await websocket_provider.connect()
+        assert websocket_provider.session is not None
+
+        await websocket_provider.disconnect()
+        assert websocket_provider.session is None
+
+    async def test_market_update_metadata(self, provider, mock_session):
+        """Test metadata handling in market updates"""
+        mock_response = {
+            "Global Quote": {
+                "01. symbol": "AAPL",
+                "02. open": "100.0",
+                "03. high": "101.0",
+                "04. low": "99.0",
+                "05. price": "100.5",
+                "06. volume": "1000000",
+                "07. latest trading day": "2024-01-02",
+                "08. previous close": "99.5",
+                "09. change": "1.0",
+                "10. change percent": "1.0%"
+            }
+        }
+        mock_session.get.return_value.__aenter__.return_value.json.return_value = mock_response
+
+        # Subscribe to symbol
+        await provider.subscribe(["AAPL"])
+        
+        # Start streaming
+        provider._stop_streaming = False
+        stream_task = asyncio.create_task(provider._stream_market_data())
+        
+        # Let it run for a bit
+        await asyncio.sleep(0.1)
+        
+        # Stop streaming
+        provider._stop_streaming = True
+        await stream_task
+        
+        # Verify metadata was included in the market update
+        assert mock_session.get.called
+        args, kwargs = mock_session.get.call_args
+        assert "apikey" in kwargs["params"]
+        assert kwargs["params"]["symbol"] == "AAPL"
