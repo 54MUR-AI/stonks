@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Dict, List, Optional, Union
 import torch
 import numpy as np
@@ -11,6 +11,9 @@ import json
 from pathlib import Path
 import asyncio
 from datetime import datetime
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_fastapi_instrumentator import Instrumentator
+from starlette.responses import Response
 
 from backend.services.ml.monitoring.metrics import ModelMetrics
 from backend.services.ml.monitoring.drift import DriftDetector
@@ -21,6 +24,18 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Stonks Model Serving API")
 
+# Initialize Prometheus metrics
+PREDICTION_COUNTER = Counter(
+    "model_predictions_total",
+    "Total number of model predictions",
+    ["model_id", "version"]
+)
+PREDICTION_LATENCY = Histogram(
+    "model_prediction_latency_seconds",
+    "Model prediction latency in seconds",
+    ["model_id", "version"]
+)
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -29,6 +44,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Initialize Prometheus instrumentation
+Instrumentator().instrument(app).expose(app)
 
 class PredictionRequest(BaseModel):
     """Model prediction request."""
@@ -143,6 +161,10 @@ async def predict(request: PredictionRequest) -> PredictionResponse:
         
         # Calculate processing time
         processing_time = (datetime.now() - start_time).total_seconds()
+        
+        # Update Prometheus metrics
+        PREDICTION_COUNTER.labels(model_id=request.model_id, version=request.version).inc()
+        PREDICTION_LATENCY.labels(model_id=request.model_id, version=request.version).observe(processing_time)
         
         return PredictionResponse(
             model_id=request.model_id,
@@ -281,6 +303,16 @@ async def start_ab_test(
     """
     # Implement A/B testing logic
     return {"status": "success"}
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus metrics endpoint."""
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 if __name__ == "__main__":
     import uvicorn
