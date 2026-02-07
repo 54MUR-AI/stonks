@@ -409,8 +409,10 @@ async def stress_test_portfolio(
     db: Session = Depends(get_db)
 ):
     """
-    Perform stress testing on a portfolio
+    Run stress tests on portfolio with custom scenarios
     """
+    if not ML_SERVICES_AVAILABLE:
+        raise HTTPException(status_code=503, detail="ML services not available")
     try:
         # Get portfolio
         portfolio = db.query(Portfolio).filter(Portfolio.id == portfolio_id).first()
@@ -571,14 +573,13 @@ async def get_stress_test_scenarios(
 async def run_stress_test(
     portfolio_id: int,
     scenario_name: str = Query(..., description="Name of the scenario to run"),
-    scenario_type: str = Query(
-        ...,
-        regex="^(historical|hypothetical|monte_carlo|sensitivity|regime_change)$"
-    ),
+    scenario_type: str = Query(..., description="Type: historical, hypothetical, monte_carlo, sensitivity"),
     custom_scenario: Optional[Dict] = None,
     db: Session = Depends(get_db)
 ):
-    """Run stress test on portfolio"""
+    """Run a specific stress test scenario"""
+    if not ML_SERVICES_AVAILABLE:
+        raise HTTPException(status_code=503, detail="ML services not available")
     try:
         # Get portfolio data
         portfolio = db.query(Portfolio).filter(Portfolio.id == portfolio_id).first()
