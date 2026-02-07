@@ -4,7 +4,7 @@ from fastapi import HTTPException
 import logging
 from typing import List, Dict, Any
 
-from models import Activity, Notification, User, ActivityType, NotificationType
+from backend.models import Activity, Notification, User, ActivityType, NotificationType
 
 
 class ActivityService:
