@@ -28,7 +28,7 @@ from activity_service import ActivityService, NotificationService
 from analytics import calculate_portfolio_metrics, calculate_correlation_matrix
 from email_service import send_alert_email, send_portfolio_summary, check_price_alerts
 from .routers import (
-    auth, users, portfolios, portfolio_metrics, websocket, rebalancing, trading, visualization
+    auth, users, portfolios, portfolio_metrics, websocket, rebalancing, trading, visualization, news
 )
 from .services.realtime_analytics import realtime_analytics_service
 
@@ -158,6 +158,7 @@ app.include_router(rebalancing.router, prefix="/api", tags=["portfolio-rebalanci
 app.include_router(trading.router, prefix="/api", tags=["trading"])
 app.include_router(visualization.router, prefix="/api", tags=["visualization"])
 app.include_router(websocket.router, prefix="/api", tags=["websocket"])
+app.include_router(news.router, tags=["news"])
 
 # Request logging middleware
 @app.middleware("http")

@@ -147,6 +147,122 @@ For support, email support@yourdomain.com
 ## Roadmap
 See ROADMAP.md for future development plans.
 
+## News Intelligence Service 🆕
+
+The platform now includes a powerful **News Intelligence Service** that combines web scraping, AI-powered summarization, and sentiment analysis to provide comprehensive market insights.
+
+### Features
+- **Multi-Source News Scraping**:
+  * Financial news articles (Bloomberg, Reuters, WSJ, Financial Times)
+  * YouTube earnings call transcripts
+  * PDF research reports and filings
+  * Social media content
+  * Generic web content
+
+- **AI-Powered Analysis**:
+  * Automatic summarization using OpenAI/Anthropic/Ollama
+  * Key points extraction
+  * Financial sentiment analysis with custom lexicon
+  * Symbol extraction and tagging
+  * Batch processing capabilities
+
+- **Sentiment Intelligence**:
+  * Real-time sentiment scoring for stocks
+  * Financial-specific sentiment lexicon (bullish, bearish, earnings beat, etc.)
+  * Sentiment trend analysis
+  * Confidence scoring
+  * Historical sentiment tracking
+
+- **Automated News Monitoring**:
+  * Scheduled news scraping for watchlist symbols
+  * Configurable scraping intervals
+  * Multi-category news sources
+  * Automatic sentiment updates
+
+### API Endpoints
+
+```python
+# Scrape single news article
+POST /api/v1/news/scrape
+{
+  "url": "https://example.com/article",
+  "symbols": ["AAPL", "MSFT"],
+  "analyze_sentiment": true
+}
+
+# Batch scrape multiple URLs
+POST /api/v1/news/scrape/batch
+{
+  "urls": ["url1", "url2", "url3"],
+  "symbols": ["AAPL"]
+}
+
+# Get news for a symbol
+GET /api/v1/news/{symbol}?limit=50&offset=0
+
+# Get sentiment analysis for a symbol
+GET /api/v1/news/sentiment/{symbol}?limit=100
+
+# Get sentiment summary
+GET /api/v1/news/sentiment/{symbol}/summary
+
+# Get latest news
+GET /api/v1/news/latest?limit=20
+
+# Get specific article
+GET /api/v1/news/article/{article_id}
+```
+
+### Usage Example
+
+```python
+from backend.services.news_intelligence.news_scraper_service import NewsScraperService
+from backend.database import SessionLocal
+
+db = SessionLocal()
+service = NewsScraperService(db)
+
+# Scrape and analyze news
+article = await service.scrape_and_store_news(
+    url="https://finance.yahoo.com/news/apple-earnings",
+    symbols=["AAPL"],
+    analyze_sentiment=True
+)
+
+# Get sentiment summary
+summary = service.get_sentiment_summary("AAPL")
+print(f"Sentiment: {summary['sentiment_breakdown']}")
+print(f"Average Score: {summary['average_score']}")
+```
+
+### Supported Content Types
+- **Articles**: Medium, Substack, blogs, financial news sites
+- **Videos**: YouTube transcripts (earnings calls, interviews)
+- **PDFs**: Research reports, SEC filings, whitepapers
+- **Social**: Reddit, Twitter/X content
+- **Generic**: Any web page with readable content
+
+### Sentiment Analysis
+The service uses VADER sentiment analysis enhanced with a financial-specific lexicon:
+- **Positive indicators**: bullish, rally, surge, earnings beat, upgrade, buy
+- **Negative indicators**: bearish, crash, plunge, earnings miss, downgrade, sell
+- **Neutral indicators**: hold, stable, unchanged
+
+Sentiment scores range from -1.0 (very negative) to +1.0 (very positive).
+
+### Configuration
+Add to your `.env` file:
+```env
+# Scraper Configuration
+SUMMARIZER_PROVIDER=openai  # or anthropic, ollama, huggingface, simple
+SUMMARIZER_MODEL=gpt-4-turbo-preview
+MAX_SUMMARY_LENGTH=500
+
+# API Keys
+OPENAI_API_KEY=your_openai_key
+ANTHROPIC_API_KEY=your_anthropic_key
+```
+
 ## Market Data Providers 
 
 The system supports multiple market data providers with intelligent failover, health monitoring, and comprehensive management capabilities:

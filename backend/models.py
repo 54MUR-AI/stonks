@@ -23,6 +23,18 @@ class NotificationType(str, enum.Enum):
     PORTFOLIO_MENTION = "portfolio_mention"
     TRADE_ALERT = "trade_alert"
 
+class NewsContentType(str, enum.Enum):
+    ARTICLE = "article"
+    VIDEO = "video"
+    PDF = "pdf"
+    SOCIAL = "social"
+    GENERIC = "generic"
+
+class SentimentType(str, enum.Enum):
+    POSITIVE = "positive"
+    NEGATIVE = "negative"
+    NEUTRAL = "neutral"
+
 # Association Tables and Support Models
 class UserFollow(Base):
     __tablename__ = "user_follows"
@@ -186,3 +198,52 @@ class Comment(Base):
     # Relationships
     portfolio = relationship("Portfolio", back_populates="comments")
     user = relationship("User", back_populates="comments")
+
+class NewsArticle(Base):
+    __tablename__ = "news_articles"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    url = Column(String, unique=True, nullable=False, index=True)
+    title = Column(String)
+    content = Column(String)
+    content_type = Column(String, nullable=False)
+    author = Column(String)
+    publish_date = Column(DateTime(timezone=True))
+    scraped_at = Column(DateTime(timezone=True), server_default=func.now())
+    summary = Column(String)
+    key_points = Column(JSON)
+    metadata = Column(JSON)
+    symbols = Column(JSON)
+    
+    # Relationships
+    sentiments = relationship("NewsSentiment", back_populates="article", cascade="all, delete-orphan")
+
+class NewsSentiment(Base):
+    __tablename__ = "news_sentiments"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    article_id = Column(Integer, ForeignKey("news_articles.id", ondelete="CASCADE"), nullable=False)
+    symbol = Column(String, nullable=False, index=True)
+    sentiment_type = Column(String, nullable=False)
+    sentiment_score = Column(Float, nullable=False)
+    confidence = Column(Float)
+    analyzed_at = Column(DateTime(timezone=True), server_default=func.now())
+    model_used = Column(String)
+    
+    # Relationships
+    article = relationship("NewsArticle", back_populates="sentiments")
+
+class ResearchDocument(Base):
+    __tablename__ = "research_documents"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    url = Column(String, unique=True, nullable=False, index=True)
+    title = Column(String)
+    document_type = Column(String)
+    content = Column(String)
+    summary = Column(String)
+    key_findings = Column(JSON)
+    symbols = Column(JSON)
+    publish_date = Column(DateTime(timezone=True))
+    scraped_at = Column(DateTime(timezone=True), server_default=func.now())
+    metadata = Column(JSON)
