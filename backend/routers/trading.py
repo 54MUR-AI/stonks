@@ -33,9 +33,21 @@ from ..services.market_signals import market_signals_service
 from ..services.risk_metrics import risk_metrics_service
 from ..services.portfolio_optimization import portfolio_optimizer
 from ..services.risk_alerts import risk_alert_service
-from ..services.stress_testing import stress_testing_service, ScenarioType, StressScenario
-from ..services.risk_prediction import risk_predictor
-from ..services.portfolio_rebalancing import portfolio_rebalancer
+
+# Optional ML-heavy services (require TensorFlow/PyTorch)
+try:
+    from ..services.stress_testing import stress_testing_service, ScenarioType, StressScenario
+    from ..services.risk_prediction import risk_predictor
+    from ..services.portfolio_rebalancing import portfolio_rebalancer
+    ML_SERVICES_AVAILABLE = True
+except ImportError as e:
+    print(f"ML services not available (missing dependencies): {e}")
+    stress_testing_service = None
+    risk_predictor = None
+    portfolio_rebalancer = None
+    ScenarioType = None
+    StressScenario = None
+    ML_SERVICES_AVAILABLE = False
 
 router = APIRouter()
 trade_executor = TradeExecutor()
@@ -447,13 +459,19 @@ async def stress_test_portfolio(
             detail=f"Failed to perform stress test: {str(e)}"
         )
 
-@router.get("/portfolio/{portfolio_id}/stress-test/scenarios")
-async def get_available_scenarios(
+@router.get("/stress-test/scenarios", response_model=Dict[str, List[Dict]])
+async def get_stress_test_scenarios(
     portfolio_id: int,
-    scenario_type: Optional[str] = Query(None, regex="^(historical|hypothetical|monte_carlo|sensitivity|regime_change)$"),
+    scenario_type: Optional[str] = Query(None, description="Type of scenarios: historical, monte_carlo, sensitivity"),
     db: Session = Depends(get_db)
 ):
     """Get available stress test scenarios"""
+    if not ML_SERVICES_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="ML services not available - missing TensorFlow/PyTorch dependencies"
+        )
+    
     try:
         if scenario_type == "historical":
             scenarios = stress_testing_service.get_available_historical_scenarios()

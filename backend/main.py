@@ -35,6 +35,10 @@ from backend.services.realtime_analytics import realtime_analytics_service
 # Load environment variables
 load_dotenv()
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # Create database tables automatically on startup
 try:
     logger.info("Initializing database...")
