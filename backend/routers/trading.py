@@ -965,11 +965,14 @@ async def get_rebalancing_recommendations(
     portfolio_id: int,
     objective: str = Query(
         "sharpe",
-        regex="^(sharpe|min_variance|max_diversification)$"
+        description="Optimization objective: sharpe, min_volatility, max_return, risk_parity"
     ),
+    constraints: Optional[Dict] = None,
     db: Session = Depends(get_db)
 ):
     """Get portfolio rebalancing recommendations"""
+    if not ML_SERVICES_AVAILABLE:
+        raise HTTPException(status_code=503, detail="ML services not available")
     try:
         # Get portfolio data
         portfolio = db.query(Portfolio).filter(Portfolio.id == portfolio_id).first()
