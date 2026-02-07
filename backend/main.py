@@ -27,10 +27,10 @@ from auth_service import AuthService, get_current_active_user
 from activity_service import ActivityService, NotificationService
 from analytics import calculate_portfolio_metrics, calculate_correlation_matrix
 from email_service import send_alert_email, send_portfolio_summary, check_price_alerts
-from .routers import (
+from backend.routers import (
     auth, users, portfolios, portfolio_metrics, websocket, rebalancing, trading, visualization, news
 )
-from .services.realtime_analytics import realtime_analytics_service
+from backend.services.realtime_analytics import realtime_analytics_service
 
 # Load environment variables
 load_dotenv()
