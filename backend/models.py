@@ -212,7 +212,7 @@ class NewsArticle(Base):
     scraped_at = Column(DateTime(timezone=True), server_default=func.now())
     summary = Column(String)
     key_points = Column(JSON)
-    metadata = Column(JSON)
+    article_metadata = Column(JSON)
     symbols = Column(JSON)
     
     # Relationships
