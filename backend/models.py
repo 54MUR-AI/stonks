@@ -246,4 +246,4 @@ class ResearchDocument(Base):
     symbols = Column(JSON)
     publish_date = Column(DateTime(timezone=True))
     scraped_at = Column(DateTime(timezone=True), server_default=func.now())
-    metadata = Column(JSON)
+    document_metadata = Column(JSON)
