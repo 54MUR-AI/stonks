@@ -35,8 +35,14 @@ from backend.services.realtime_analytics import realtime_analytics_service
 # Load environment variables
 load_dotenv()
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+# Create database tables automatically on startup
+try:
+    logger.info("Initializing database...")
+    Base.metadata.create_all(bind=engine)
+    logger.info("Database initialized successfully!")
+except Exception as e:
+    logger.error(f"Database initialization error: {e}")
+    # Continue anyway - app can still serve API docs and health checks
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -159,6 +165,10 @@ app.include_router(trading.router, prefix="/api", tags=["trading"])
 app.include_router(visualization.router, prefix="/api", tags=["visualization"])
 app.include_router(websocket.router, prefix="/api", tags=["websocket"])
 app.include_router(news.router, tags=["news"])
+
+# Admin router for database management (workaround for no shell access)
+from backend.admin_api import router as admin_router
+app.include_router(admin_router, prefix="/api", tags=["admin"])
 
 # Request logging middleware
 @app.middleware("http")
