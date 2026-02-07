@@ -1,11 +1,12 @@
-# Stonks: Advanced Financial Machine Learning Platform
+# STONKS
+## Smart Trading Options for Novices & Knowledgeable Speculators
 
 <p align="center">
   <img src="logo.png" alt="STONKS" width="400"/>
 </p>
 
 ## Overview
-Stonks is a comprehensive machine learning infrastructure for advanced financial data analysis and predictive trading strategies. The platform leverages state-of-the-art deep learning models, real-time market data processing, and production-grade deployment infrastructure.
+STONKS is a comprehensive machine learning infrastructure for advanced financial data analysis and predictive trading strategies. The platform leverages state-of-the-art deep learning models, real-time market data processing, and production-grade deployment infrastructure designed for both novice traders and experienced speculators.
 
 ## Features
 - 🧠 Advanced ML Models
