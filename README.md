@@ -137,13 +137,13 @@ Our GitHub Actions pipeline handles:
 5. Create Pull Request
 
 ## Security
-Report security vulnerabilities to security@yourdomain.com
+Report security vulnerabilities via GitHub Issues or contact [@54MUR-AI](https://github.com/54MUR-AI)
 
 ## License
 This project is licensed under the MIT License - see LICENSE file for details.
 
 ## Support
-For support, email support@yourdomain.com
+For support, please open an issue on GitHub
 
 ## Roadmap
 See ROADMAP.md for future development plans.
@@ -394,7 +394,7 @@ stats = await provider.get_symbol_stats("AAPL")
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/stonks.git
+git clone https://github.com/54MUR-AI/stonks.git
 cd stonks
 ```
 
