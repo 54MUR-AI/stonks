@@ -12,21 +12,21 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, constr, confloat, validator
 from typing import List, Dict, Optional
 
-from database import SessionLocal, engine, Base
-from models import (
+from backend.database import SessionLocal, engine, Base
+from backend.models import (
     Base, ActivityType, NotificationType, User, Portfolio, Position,
     Trade, Watchlist, Alert, PortfolioShare, UserFollow, Comment
 )
-from schemas import (
+from backend.schemas import (
     UserCreate, UserResponse, Token, PortfolioCreate, PortfolioResponse,
     PositionCreate, PositionResponse, TradeCreate, TradeResponse,
     WatchlistCreate, WatchlistResponse, AlertCreate, AlertResponse,
     CommentCreate, CommentResponse, MarketDataRequest, TargetWeights
 )
-from auth_service import AuthService, get_current_active_user
-from activity_service import ActivityService, NotificationService
-from analytics import calculate_portfolio_metrics, calculate_correlation_matrix
-from email_service import send_alert_email, send_portfolio_summary, check_price_alerts
+from backend.auth_service import AuthService, get_current_active_user
+from backend.activity_service import ActivityService, NotificationService
+from backend.analytics import calculate_portfolio_metrics, calculate_correlation_matrix
+from backend.email_service import send_alert_email, send_portfolio_summary, check_price_alerts
 from backend.routers import (
     auth, users, portfolios, portfolio_metrics, websocket, rebalancing, trading, visualization, news
 )
