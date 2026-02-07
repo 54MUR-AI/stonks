@@ -1,9 +1,15 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 from typing import Literal
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
+    
     openai_api_key: str = Field(default="", env="OPENAI_API_KEY")
     anthropic_api_key: str = Field(default="", env="ANTHROPIC_API_KEY")
     huggingface_api_key: str = Field(default="", env="HUGGINGFACE_API_KEY")
@@ -15,10 +21,6 @@ class Settings(BaseSettings):
         default="llama3.2", env="SUMMARIZER_MODEL"
     )
     max_summary_length: int = Field(default=500, env="MAX_SUMMARY_LENGTH")
-    
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 settings = Settings()
